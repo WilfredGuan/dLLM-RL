@@ -9,9 +9,12 @@ from typing import Any, List, Tuple, Union
 ##################################################
 #              config utils
 ##################################################
-def get_config():
+def get_config(config_path=None):
     cli_conf = OmegaConf.from_cli()
-    yaml_conf = OmegaConf.load(cli_conf.config)
+    if config_path is not None:
+        yaml_conf = OmegaConf.load(config_path)
+    else:
+        yaml_conf = OmegaConf.load(cli_conf.config)
     conf = OmegaConf.merge(yaml_conf, cli_conf)
 
     return conf

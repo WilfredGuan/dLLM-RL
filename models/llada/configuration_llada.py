@@ -362,6 +362,16 @@ class ModelConfig():
     See :data:`TrainConfig.precision` instead.
     """
 
+    use_latent_recursive: bool = False
+    """
+    Whether to use latent recursive forward passes.
+    """
+
+    max_latent_recursive_steps: int = 32
+    """
+    Maximum number of latent recursive steps supported.
+    """
+
     @property
     def effective_n_kv_heads(self) -> int:
         if self.n_kv_heads is None:

@@ -43,7 +43,12 @@ from transformers.modeling_outputs import (
 from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS, dynamic_rope_update
 from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from transformers.processing_utils import Unpack
-from transformers.utils import LossKwargs, auto_docstring, can_return_tuple, is_torch_flex_attn_available, logging
+try:
+    from transformers.utils import LossKwargs, auto_docstring, can_return_tuple, is_torch_flex_attn_available, logging
+except ImportError:
+    # For older transformers versions without LossKwargs
+    from transformers.utils import auto_docstring, can_return_tuple, is_torch_flex_attn_available, logging
+    LossKwargs = None
 from .configuration_sdar import SDARConfig
 
 from flash_attn.ops.triton.layer_norm import rms_norm_fn as flash_rms_norm
@@ -795,8 +800,12 @@ class SDARModel(SDARPreTrainedModel):
         return causal_mask
 
 
-class KwargsForCausalLM(FlashAttentionKwargs, LossKwargs):
-    ...
+if LossKwargs is not None:
+    class KwargsForCausalLM(FlashAttentionKwargs, LossKwargs):
+        ...
+else:
+    class KwargsForCausalLM(FlashAttentionKwargs):
+        ...
 
 
 @auto_docstring

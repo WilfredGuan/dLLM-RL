@@ -1,0 +1,59 @@
+experiment:
+    project: "sft_llada_recursive"
+    num_node: 1
+
+model:
+    pretrained_model: "GSAI-ML/LLaDA-8B-Instruct"
+    optimized_name: "optimized_recursive"
+
+dataset:
+    optimization_data: "sft_gsm8k_llada"
+
+training:
+    gradient_checkpointing_enable: False
+    gradient_accumulation_steps: 2
+    batch_size_lm: 2
+    mixed_precision: "bf16"
+    enable_tf32: False
+    seed: 42
+    num_train_epochs: 1
+    max_grad_norm: 1
+    freeze_first_half_layers: False  # Freeze first half of transformer layers
+    
+    # Masking strategy
+    method: "random_masking"
+    lower_p: 0.1
+    upper_p: 0.9
+    block_size: 32
+    mask_times_per_sample: 10
+    post_num: 0
+    max_gen_length: 1024
+    max_prompt_len: 784
+    
+    # Latent Recursive parameters
+    use_latent_recursive: True
+    latent_recursive_steps: 16  # Reduced from 16 to avoid numerical instability
+    recursive_in_training: True
+
+optimizer:
+    name: adamw
+    params:
+        learning_rate: 1e-5
+        scale_lr: False
+        beta1: 0.9
+        beta2: 0.999
+        weight_decay: 0.0
+        epsilon: 1e-8
+
+lr_scheduler:
+    scheduler: "cosine"
+    params:
+        learning_rate: ${optimizer.params.learning_rate}
+        warmup_steps: 0
+        min_lr_scale: 1.0
+
+# Logging configuration
+logging:
+    use_tensorboard: True
+    log_dir: "tensorboard_logs"
+    log_interval: 5

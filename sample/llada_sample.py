@@ -41,7 +41,6 @@ def get_num_transfer_tokens(mask_index, steps):
     return num_transfer_tokens
 
 
-
 # ──────────────────────────── return type ────────────────────────────────
 @dataclass
 class DiffusionOutput:
@@ -50,15 +49,12 @@ class DiffusionOutput:
     nfe:       int
 
 
-
-
-
-
 @torch.no_grad()
 def generate_with_prefix_cache(
         model, prompt,
         steps, gen_length, block_length, temperature,
-        target, mask_id, further_horizon, use_cache, unmask_threshold
+        target, mask_id, further_horizon, use_cache, unmask_threshold,
+        latent_recursive_steps=0
     ) -> DiffusionOutput:
 
     cgws = further_horizon
@@ -68,6 +64,16 @@ def generate_with_prefix_cache(
     x[:, :L0] = prompt
     assert gen_length % block_length == 0
     num_blocks = gen_length // block_length
+    
+    # Calculate steps per block
+    # For each block:
+    #   - First do latent_recursive_steps forward passes in latent space
+    #   - Then use remaining steps to unmask tokens
+    # Example: steps=1024, num_blocks=32, latent_recursive_steps=16
+    #   - Each block gets 1024/32 = 32 steps
+    #   - 16 steps for latent recursive, 16 steps for unmask
+    #   - Unmask speed = 32 tokens / 16 steps = 2 tokens/step
+    
     base, rem = divmod(steps, num_blocks)
     steps_per_block = [base + (i < rem) for i in range(num_blocks)]
 
@@ -82,19 +88,64 @@ def generate_with_prefix_cache(
             window_slice = slice(s, window_end)
         
         cur_steps = steps_per_block[blk]
-        num_transfer = get_num_transfer_tokens((x[:, s:e] == mask_id), cur_steps)
+        # Calculate actual unmask steps (excluding latent recursive steps)
+        # For example: cur_steps=32, latent_recursive_steps=16 -> unmask_steps=16
+        unmask_steps = cur_steps - latent_recursive_steps if latent_recursive_steps > 0 else cur_steps
+        if unmask_steps < 1:
+            unmask_steps = 1  # At least 1 unmask step
+        num_transfer = get_num_transfer_tokens((x[:, s:e] == mask_id), unmask_steps)
 
-        # first full forward to build prefix cache
-        if use_cache:
-            out = model(x, use_cache=True)
-            pkv = out.past_key_values
-            # chop prefix out of past_kv to keep cache small
-            new_pkv = tuple(
-                tuple(t[:, :, :s] for t in layer) for layer in pkv
-            )
-            pkv = new_pkv
+        # Latent recursive forward passes ONLY at block initialization
+        # After this, use standard forward with cache for unmask steps
+        if latent_recursive_steps > 0 and hasattr(model, 'model') and hasattr(model.model, 'forward_latent_only'):
+            # Get initial hidden states
+            hidden_states = model.model.transformer.wte(x)
+            
+            # Perform latent recursive steps ONCE per block
+            for lat_step in range(latent_recursive_steps):
+                hidden_states = model.model.forward_latent_only(
+                    hidden_states=hidden_states,
+                    latent_step=lat_step,
+                    attention_bias=None,
+                )
+            
+            # Get logits from final hidden states
+            if model.config.weight_tying:
+                logits = F.linear(hidden_states, model.model.transformer.wte.weight, None)
+            else:
+                logits = model.model.transformer.ff_out(hidden_states)
+            
+            if hasattr(model.config, 'scale_logits') and model.config.scale_logits:
+                import math
+                logits = logits * (1 / math.sqrt(model.config.d_model))
+            
+            # Build cache for subsequent unmask steps
+            pkv = None
+            if use_cache:
+                # Use standard forward to build cache (no recursive here)
+                out_cache = model(x, use_cache=True)
+                if out_cache is not None and hasattr(out_cache, 'past_key_values') and out_cache.past_key_values is not None:
+                    pkv = out_cache.past_key_values
+                    new_pkv = tuple(
+                        tuple(t[:, :, :s] for t in layer) for layer in pkv
+                    )
+                    pkv = new_pkv
+            
+            # Create output object with logits
+            from types import SimpleNamespace
+            out = SimpleNamespace(logits=logits, past_key_values=pkv)
         else:
-            out = model(x, use_cache=False)
+            # Original logic without latent recursive
+            if use_cache:
+                out = model(x, use_cache=True)
+                pkv = out.past_key_values
+                # chop prefix out of past_kv to keep cache small
+                new_pkv = tuple(
+                    tuple(t[:, :, :s] for t in layer) for layer in pkv
+                )
+                pkv = new_pkv
+            else:
+                out = model(x, use_cache=False)
         
         mask_all = (x == mask_id)
         mask_all[:, e:] = 0
@@ -115,25 +166,37 @@ def generate_with_prefix_cache(
                 mask_blk = (x[:, s:] == mask_id)
             mask_blk[:, block_length:] = 0
 
+            # Check if we've exhausted all unmask steps for this block
+            if i >= unmask_steps:
+                # If still have masks but no more steps, break
+                if (x[:, s:e] == mask_id).sum() == 0:
+                    break
+                # Otherwise use the last step's num_transfer
+                step_idx = unmask_steps - 1
+            else:
+                step_idx = i
+
+            # Use standard forward with cache for all unmask steps
+            # (latent recursive was already done once at block initialization)
             if use_cache:
                 if cgws is not None:
                     logits = model(x[:, window_slice], past_key_values=pkv, use_cache=True).logits
                     x0, tr_idx = get_transfer_index(
                         logits, temperature, target,
-                        mask_blk, x[:, window_slice], num_transfer[:, i], unmask_threshold)
+                        mask_blk, x[:, window_slice], num_transfer[:, step_idx], unmask_threshold)
                     x[:, window_slice][tr_idx] = x0[tr_idx]
                 else:
                     logits = model(x[:, s:], past_key_values=pkv, use_cache=True).logits
                     x0, tr_idx = get_transfer_index(
                         logits, temperature, target,
-                        mask_blk, x[:, s:], num_transfer[:, i], unmask_threshold)
+                        mask_blk, x[:, s:], num_transfer[:, step_idx], unmask_threshold)
                     x[:, s:][tr_idx] = x0[tr_idx]
             else:
                 logits = model(x, use_cache=False).logits
                 logits = logits[:, s:]
                 x0, tr_idx = get_transfer_index(
                     logits, temperature, target,
-                    mask_blk, x[:, s:], num_transfer[:, i], unmask_threshold)
+                    mask_blk, x[:, s:], num_transfer[:, step_idx], unmask_threshold)
                 x[:, s:][tr_idx] = x0[tr_idx]
             
             hist.append(x.clone().cpu())
@@ -143,8 +206,6 @@ def generate_with_prefix_cache(
             i += 1
 
     return DiffusionOutput(sequences=x, history=hist, nfe=nfe)
-
-
 
 
 def get_transfer_index(logits, temperature, target, mask_index, x, num_transfer_tokens, threshold=None):
@@ -243,20 +304,41 @@ def denoise_step_map(history, mask_id: int, sample_idx: int = 0):
     return step_map
 
 
-
 from tqdm import tqdm
 
 def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch_size, config):
     torch.cuda.set_device(rank)
     device = torch.device(f"cuda:{rank}")
 
+    # Check if we need latent recursive model
+    latent_recursive_steps = config.rollout.get('latent_recursive_steps', 0)
+
     # load model once
-    model_gpu = (LLaDAModelLM
-                 .from_pretrained(pretrained_model,
-                                  trust_remote_code=True,
-                                  torch_dtype=torch.bfloat16)
-                 .to(device)
-                 .eval())
+    if latent_recursive_steps > 0:
+        # Load recursive model
+        from llada.modeling_llada import LLaDAModelLM, LLaDAConfig
+        from llada.modeling_recursive_llada import LLaDAModelLM as LLaDAModelLMRecursive
+        from llada.configuration_llada import LLaDAConfig
+
+        model_config = LLaDAConfig.from_pretrained(pretrained_model)
+        model_config.use_latent_recursive = True
+        model_config.max_latent_recursive_steps = latent_recursive_steps
+
+        model_gpu = (LLaDAModelLMRecursive
+                     .from_pretrained(pretrained_model,
+                                      config=model_config,
+                                      trust_remote_code=True,
+                                      torch_dtype=torch.bfloat16)
+                     .to(device)
+                     .eval())
+    else:
+        # Load standard model
+        model_gpu = (LLaDAModelLM
+                     .from_pretrained(pretrained_model,
+                                      trust_remote_code=True,
+                                      torch_dtype=torch.bfloat16)
+                     .to(device)
+                     .eval())
 
     tokenizer_gpu = AutoTokenizer.from_pretrained(pretrained_model, trust_remote_code=True)
 
@@ -276,11 +358,14 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
 
         if config.rollout.use_cache == False:
             config.rollout.further_horizon = None
-        
+
         if config.rollout.remasking_strategy == "low_confidence_static":
             unmask_threshold = None
         else:
             unmask_threshold = config.rollout.dynamic_threshold
+
+        # Get latent recursive steps from config
+        latent_recursive_steps = config.rollout.get('latent_recursive_steps', 0)
 
         # generate_with_prefix_cache
         out = generate_with_prefix_cache(
@@ -288,7 +373,8 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
             steps=config.rollout.steps, gen_length=config.rollout.max_gen_length,
             block_length=config.rollout.block_size, temperature=config.rollout.temperature,
             target=config.rollout.target, mask_id=mask_id, further_horizon=config.rollout.further_horizon,
-            use_cache=config.rollout.use_cache, unmask_threshold = unmask_threshold
+            use_cache=config.rollout.use_cache, unmask_threshold=unmask_threshold,
+            latent_recursive_steps=latent_recursive_steps
         )
         out.sequences = out.sequences.cpu()
         torch.cuda.empty_cache()
@@ -297,9 +383,7 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         seq_ids = out.sequences[:, input_ids.shape[1]:].tolist()
         texts  = tokenizer_gpu.batch_decode(
             seq_ids, skip_special_tokens=False, clean_up_tokenization_spaces=True)
-        
-        
-        
+
         # compute and store step maps
         for i, idx in enumerate(batch_idxs):
             # extract step map for sample i in this batch
@@ -318,7 +402,6 @@ def get_data_chunk(data, num_node, node_idx):
     start_idx = node_idx * chunk_size
     end_idx = min((node_idx + 1) * chunk_size, total)
     return data[start_idx:end_idx]
-
 
 
 def extract_code(full_output):
@@ -359,7 +442,8 @@ if __name__ == "__main__":
 
     with open("../data/" + dataset + ".json", 'r') as f:
         data = json.load(f)
-    #data = [data[i] for i in range(8)]
+    
+    data = [data[i] for i in range(8)]
     
     num_node = config.experiment.num_node
     node_index = config.experiment.node_index

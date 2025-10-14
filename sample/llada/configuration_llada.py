@@ -1,20 +1,3 @@
-# Copyright 2025 NVIDIA CORPORATION & AFFILIATES
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# SPDX-License-Identifier: Apache-2.0
-# Modified from LLaDA repos: https://github.com/ML-GSAI/LLaDA
-
 """
 LLaDA configuration
 """
@@ -288,11 +271,6 @@ class ModelConfig():
     The maximum input sequence length supported by the model.
     """
 
-    train_max_sequence_length: int = 1024
-    """
-    The maximum input sequence length supported by the model during training.
-    """
-
     rope_theta: float = 10000.0
     """
     The rope base param.
@@ -382,6 +360,16 @@ class ModelConfig():
     """
     Precision used to train/evaluate with. You shouldn't set this directly.
     See :data:`TrainConfig.precision` instead.
+    """
+
+    use_latent_recursive: bool = False
+    """
+    Whether to use latent recursive forward passes.
+    """
+
+    max_latent_recursive_steps: int = 32
+    """
+    Maximum number of latent recursive steps supported.
     """
 
     @property

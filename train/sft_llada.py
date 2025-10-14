@@ -2,6 +2,7 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
+import argparse
 import json
 import logging
 import math
@@ -13,9 +14,9 @@ from typing import Union
 import numpy as np
 from PIL import Image
 from omegaconf import OmegaConf
-import wandb
 import torch
 from torch.optim import AdamW
+from torch.utils.tensorboard import SummaryWriter
 
 from transformers import AutoTokenizer
 from accelerate import Accelerator
@@ -25,14 +26,12 @@ from accelerate.utils import set_seed
 
 from train.utils import get_config, flatten_omega_conf, AverageMeter
 
-from models import LLaDAModelLM
+from models import LLaDAModelLM, LLaDAModelLMRecursive
 from train.prompting_utils import UniversalPrompting
 from models.lr_schedulers import get_scheduler
 from models.logging import set_verbosity_info, set_verbosity_error
 
 from torch.utils.data import Dataset, DataLoader
-
-
 
 
 try:
@@ -43,8 +42,6 @@ except ImportError:
     is_apex_available = False
 
 logger = get_logger(__name__, log_level="INFO")
-
-
 
 
 class TrainDataset(Dataset):
@@ -64,17 +61,27 @@ class TrainDataset(Dataset):
         )
 
 
-
 def main():
+    #########################
+    # Parse arguments       #
+    #########################
+    parser = argparse.ArgumentParser(description="SFT training for LLaDA")
+    parser.add_argument(
+        '--config',
+        type=str,
+        default='configs/sft_llada.yaml',
+        help='Path to config yaml file'
+    )
+    args = parser.parse_args()
+
     #########################
     # SETUP Accelerator     #
     #########################
-    config = get_config()
+    config = get_config(config_path=args.config)
 
     project_name = config.experiment.project
     pretrained_model = config.model.pretrained_model
 
-    
     # Enable TF32 on Ampere GPUs
     if config.training.enable_tf32:
         torch.backends.cuda.matmul.allow_tf32 = True
@@ -82,6 +89,20 @@ def main():
         torch.backends.cudnn.deterministic = False
 
     config.experiment.logging_dir = str(Path(config.experiment.project) / "logs")
+
+    # Setup tensorboard if enabled (create writer but log after Accelerator init)
+    use_tensorboard = config.get('logging', {}).get('use_tensorboard', False)
+    writer = None
+    log_dir = None
+    if use_tensorboard:
+        log_dir = Path(config.experiment.project) / "ckpt" / config.get('logging', {}).get('log_dir', 'tensorboard_logs')
+        log_dir.mkdir(parents=True, exist_ok=True)
+        if torch.distributed.is_initialized():
+            if torch.distributed.get_rank() == 0:
+                writer = SummaryWriter(str(log_dir))
+        else:
+            writer = SummaryWriter(str(log_dir))
+
     accelerator = Accelerator(
         gradient_accumulation_steps=config.training.gradient_accumulation_steps,
         mixed_precision=config.training.mixed_precision,
@@ -89,7 +110,10 @@ def main():
         project_dir=config.experiment.logging_dir,
         split_batches=True,
     )
-    
+
+    # Log tensorboard info after Accelerator is initialized
+    if use_tensorboard and log_dir:
+        logger.info(f"TensorBoard logging to {log_dir}")
 
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -102,29 +126,7 @@ def main():
     else:
         set_verbosity_error()
 
-    if accelerator.is_main_process:
-        resume_wandb_run = config.wandb.resume
-        run_id = config.wandb.get("run_id", None)
-        if run_id is None:
-            resume_wandb_run = False
-            run_id = wandb.util.generate_id()
-            config.wandb.run_id = run_id
-
-        wandb_init_kwargs = dict(
-            name=config.experiment.project,
-            id=run_id,
-            resume=resume_wandb_run,
-            entity=config.wandb.get("entity", None),
-            config_exclude_keys=[],
-        )
-        wandb_config = {k: v for k, v in flatten_omega_conf(config, resolve=True)}
-        wandb_config.pop("experiment.resume_from_checkpoint", None)
-
-        accelerator.init_trackers(
-            config.experiment.project,
-            config=wandb_config,
-            init_kwargs={"wandb": wandb_init_kwargs},
-        )
+    # Skip wandb initialization - using tensorboard instead
 
     if accelerator.is_main_process:
         os.makedirs(config.experiment.project, exist_ok=True)
@@ -145,9 +147,76 @@ def main():
     uni_prompting = UniversalPrompting(tokenizer, max_prompt_len=config.training.max_prompt_len,
                                        max_gen_length=config.training.max_gen_length,
                                        ignore_id=-100)
-    
-    model = LLaDAModelLM.from_pretrained(pretrained_model, torch_dtype=torch.bfloat16)
+
+    # Choose model class based on config
+    use_latent_recursive = config.training.get('use_latent_recursive', False)
+    logger.info(f"use_latent_recursive: {use_latent_recursive}")
+
+    if use_latent_recursive:
+        logger.info("Loading LLaDAModelLMRecursive (with latent recursive support)")
+        # Load config first and modify it before loading model
+        from models.llada.configuration_llada import LLaDAConfig
+        model_config = LLaDAConfig.from_pretrained(pretrained_model)
+        latent_steps = config.training.get('latent_recursive_steps', 16)
+        model_config.use_latent_recursive = True
+        model_config.max_latent_recursive_steps = latent_steps
+        
+        # Load model with modified config
+        model = LLaDAModelLMRecursive.from_pretrained(
+            pretrained_model, 
+            config=model_config,
+            torch_dtype=torch.bfloat16
+        )
+        
+        from torch import nn
+        # Explicitly initialize latent_step_embedding since it's not in pretrained weights
+        if hasattr(model.model, 'latent_step_embedding'):
+            logger.info("Initializing latent_step_embedding...")
+            nn.init.normal_(model.model.latent_step_embedding.weight, mean=0.0, std=0.02)
+            # Convert to bfloat16 to match model dtype
+            model.model.latent_step_embedding.weight.data = model.model.latent_step_embedding.weight.data.to(torch.bfloat16)
+            logger.info(f"latent_step_embedding initialized: shape={model.model.latent_step_embedding.weight.shape}, dtype={model.model.latent_step_embedding.weight.dtype}")
+        
+        logger.info(f"Enabled latent recursive with max_steps={latent_steps}")
+    else:
+        logger.info("Loading LLaDAModelLM (original)")
+        model = LLaDAModelLM.from_pretrained(pretrained_model, torch_dtype=torch.bfloat16)
     model = model.to(accelerator.device)
+    
+    # Freeze first half of layers if configured
+    freeze_first_half = config.training.get('freeze_first_half_layers', False)
+    if freeze_first_half:
+        logger.info("Freezing first half of transformer layers...")
+        
+        # Get the blocks
+        if hasattr(model.model.transformer, 'blocks'):
+            blocks = model.model.transformer.blocks
+        elif hasattr(model.model.transformer, 'block_groups'):
+            blocks = model.model.transformer.block_groups
+        else:
+            raise ValueError("Cannot find transformer blocks in model")
+        
+        n_layers = len(blocks)
+        freeze_until = n_layers // 2
+        
+        logger.info(f"Total layers: {n_layers}, Freezing layers 0-{freeze_until-1}, Training layers {freeze_until}-{n_layers-1}")
+        
+        # Freeze first half
+        for i in range(freeze_until):
+            for param in blocks[i].parameters():
+                param.requires_grad = False
+        
+        # Count trainable parameters
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        total_params = sum(p.numel() for p in model.parameters())
+        logger.info(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100*trainable_params/total_params:.2f}%)")
+    
+    # GPU Memory Check after model loading
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / 1024**3
+        reserved = torch.cuda.memory_reserved() / 1024**3
+        total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+        logger.info(f"[After Model Load] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
     mask_id = tokenizer.encode('<|mdm_mask|>')[0]
     pad_id = tokenizer.encode('<|endoftext|>')[0]
@@ -184,9 +253,6 @@ def main():
     else:
         raise ValueError(f"Optimizer {optimizer_type} not supported")
 
-    
-
-
     def collapse_k_unique(lst, k: int):
         if k <= 0:
             raise ValueError("k must be > 0")
@@ -201,21 +267,17 @@ def main():
             mapping[val] = rep
         return [mapping[x] for x in lst]
 
-
-
     ##################################
     #         DATALOADER             #
     #################################
     logger.info("Creating dataloaders and lr_scheduler")
-
-    
 
     @torch.no_grad()
     def prepare_inputs_and_labels_for_text(
         prompt, response, step_map, eps=1e-3, mask_id=mask_id
     ):
         input_ids_lm, labels_lm, start_pos, drop_num = uni_prompting((prompt, response))
-        
+
         B, L = input_ids_lm.shape
         max_gen_len = config.training.max_gen_length
         if max_gen_len + start_pos < L:
@@ -225,12 +287,8 @@ def main():
         input_ids_lm = input_ids_lm[:, :L_after]
         labels_lm = labels_lm[:, :L_after]
 
-
         lower = config.training.lower_p
         upper = config.training.upper_p
-        
-
-
 
         if config.training.method == "semi-ar":
 
@@ -260,13 +318,12 @@ def main():
                     keep_first_pad_b = torch.zeros(L, dtype=torch.bool, device=device)
                     tail_pad_b       = torch.zeros(L, dtype=torch.bool, device=device)
 
-
                 for i in range(0, len(uniq_steps)):
-                    
+
                     block_mask = (order_full == uniq_steps[i])
                     p = torch.empty(L, device=device).uniform_(lower, upper)
                     block_mask = (torch.rand(L, device=device) < p) & block_mask
-                    
+
                     noisy_ids = base_ids.clone()
                     mask_pos  = (order_full > uniq_steps[i]) | block_mask
                     noisy_ids[mask_pos] = mask_id
@@ -285,9 +342,6 @@ def main():
             noisy_batch = torch.stack(noisy_list)
             labels_lm   = torch.stack(label_list)
             p_mask      = torch.stack(pmask_list)
-            
-        
-
 
         elif config.training.method == "random_masking":
             m = config.training.mask_times_per_sample
@@ -328,24 +382,13 @@ def main():
             noisy_batch = torch.stack(noisy_list)    # (B*m, L)
             labels_lm   = torch.stack(label_list)
             p_mask      = torch.stack(pmask_list)
-        
-
 
         valid_rows = p_mask.any(dim=1)
         noisy_batch = noisy_batch[valid_rows]
         labels_lm   = labels_lm[valid_rows]
         p_mask      = p_mask[valid_rows]
-        
-        
 
-
-            
-        
         return noisy_batch, labels_lm, p_mask, start_pos, drop_num
-    
-
-
-
 
     def simple_collate(batch):
         inp, lbl, msk = zip(*batch)  
@@ -357,7 +400,7 @@ def main():
 
     with open("./data/" + config.dataset.optimization_data + ".json", 'r') as f:
         dataset_load = json.load(f)
-    #dataset_load = dataset_load[:2000]
+    # dataset_load = dataset_load[:2000]
     prompt_list = []
     response_list = []
     step_map_list = []
@@ -370,6 +413,13 @@ def main():
             step_map_list.append(x["step_map"])
     input_ids, labels, p_mask_lm, start_pos, drop_num = prepare_inputs_and_labels_for_text(prompt_list, response_list, step_map_list)
     dataset_lm = TrainDataset(input_ids, labels, p_mask_lm)
+    
+    # GPU Memory Check after data preparation
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / 1024**3
+        reserved = torch.cuda.memory_reserved() / 1024**3
+        total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+        logger.info(f"[After Data Prep] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
     total_batch_size_lm = config.training.batch_size_lm * accelerator.num_processes * config.training.gradient_accumulation_steps
     num_update_steps_per_epoch = math.ceil(len(dataset_lm) / total_batch_size_lm)
@@ -391,25 +441,32 @@ def main():
         collate_fn=simple_collate,
         num_workers=0
     )
-    
-    
 
     ##################################
     #       Prepare accelerator     #
     #################################
     logger.info("Preparing model, optimizer and dataloaders")
-    #model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
+    # model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
     model, optimizer, lr_scheduler, train_dataloader_lm = accelerator.prepare(
         model, optimizer, lr_scheduler, train_dataloader_lm
     )
+    
+    # GPU Memory Check after accelerator prepare
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / 1024**3
+        reserved = torch.cuda.memory_reserved() / 1024**3
+        total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+        logger.info(f"[After Accelerator Prepare] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
-    mask_dtype = model.get_input_embeddings().weight.dtype
+    # Access the underlying model when wrapped in DDP
+    unwrapped_model = accelerator.unwrap_model(model)
+    mask_dtype = unwrapped_model.get_input_embeddings().weight.dtype
 
     ##################################
     #             Training          #
     #################################
     logger.info("***** Running training *****")
-    
+
     logger.info(f"  Num response = {len(dataset_load)}")
     logger.info(f"  Num sample dropped = {drop_num}")
     logger.info(f"  Num training data = {input_ids.shape[0]}")
@@ -417,20 +474,117 @@ def main():
     logger.info(f"  Instantaneous batch size per device = {config.training.batch_size_lm}")
     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size_lm}")
     logger.info(f"  Gradient Accumulation steps = {config.training.gradient_accumulation_steps}")
-    
-    
+
     first_epoch = 0
     data_time_m = AverageMeter()
     end = time.time()
 
     import torch.nn.functional as F
 
+    # Get latent recursive config (use_latent_recursive already defined above)
+    latent_recursive_steps = config.training.get('latent_recursive_steps', 0)
+    recursive_in_training = config.training.get('recursive_in_training', False)
+
     def forward_process(input_ids, labels, p_mask_lm):
-        logits = model(input_ids).logits
+        """
+        Forward process with optional latent recursive.
+        """
+        if not (use_latent_recursive and recursive_in_training):
+            # Original logic
+            logits = model(input_ids).logits
+        else:
+            # Latent recursive logic
+            # Unwrap model from DDP
+            unwrapped_model = accelerator.unwrap_model(model)
+
+            # 1. Get initial hidden states
+            hidden_states = unwrapped_model.model.transformer.wte(input_ids)
+            
+            # NaN check for embeddings
+            if torch.isnan(hidden_states).any():
+                logger.error(f"NaN detected in initial embeddings!")
+                raise ValueError("NaN in embeddings")
+            
+            # Check latent_step_embedding weights before starting
+            if hasattr(unwrapped_model.model, 'latent_step_embedding'):
+                step_emb_weight = unwrapped_model.model.latent_step_embedding.weight
+                if torch.isnan(step_emb_weight).any():
+                    logger.error(f"NaN in latent_step_embedding weights!")
+                    logger.error(f"Weight shape: {step_emb_weight.shape}")
+                    logger.error(f"Weight stats: min={step_emb_weight.min()}, max={step_emb_weight.max()}")
+                    raise ValueError("latent_step_embedding has NaN weights")
+                if torch.isinf(step_emb_weight).any():
+                    logger.error(f"Inf in latent_step_embedding weights!")
+                    raise ValueError("latent_step_embedding has Inf weights")
+                # logger.info(f"latent_step_embedding OK: min={step_emb_weight.min():.4f}, max={step_emb_weight.max():.4f}, mean={step_emb_weight.mean():.4f}")
+
+            # 2. Get attention bias
+            batch_size, seq_len = input_ids.shape
+            attention_bias = None
+            # You may need to prepare attention_bias here based on your needs
+
+            # 3. Latent recursive phase
+            # Only keep gradient for the last step since loss is computed on final hidden_states
+            for step in range(latent_recursive_steps):
+                if step < latent_recursive_steps - 1:
+                    # Intermediate steps: no gradient tracking
+                    with torch.no_grad():
+                        hidden_states_new = unwrapped_model.model.forward_latent_only(
+                            hidden_states=hidden_states,
+                            latent_step=step,
+                            attention_bias=attention_bias,
+                        )
+                    
+                    # NaN check
+                    if torch.isnan(hidden_states_new).any():
+                        logger.error(f"NaN detected at latent step {step}")
+                        logger.error(f"Hidden states stats - min: {hidden_states.min()}, max: {hidden_states.max()}, mean: {hidden_states.mean()}")
+                        raise ValueError(f"NaN at latent step {step}")
+                    
+                    # Detach and clamp to prevent extreme values
+                    hidden_states = hidden_states_new.detach()
+                    hidden_states = torch.clamp(hidden_states, min=-1e4, max=1e4)
+                    hidden_states = hidden_states.requires_grad_(True)
+                else:
+                    # Last step: keep gradient for backprop
+                    hidden_states = unwrapped_model.model.forward_latent_only(
+                        hidden_states=hidden_states,
+                        latent_step=step,
+                        attention_bias=attention_bias,
+                    )
+                    
+                    # NaN check for final step
+                    if torch.isnan(hidden_states).any():
+                        logger.error(f"NaN detected at final latent step {step}")
+                        raise ValueError(f"NaN at final latent step")
+
+            # 4. Final forward to get logits
+            if unwrapped_model.config.weight_tying:
+                logits = F.linear(hidden_states, unwrapped_model.model.transformer.wte.weight, None)
+            else:
+                logits = unwrapped_model.model.transformer.ff_out(hidden_states)
+
+            if hasattr(unwrapped_model.config, 'scale_logits') and unwrapped_model.config.scale_logits:
+                logits = logits * (1 / math.sqrt(unwrapped_model.config.d_model))
+            
+            # NaN check for logits
+            if torch.isnan(logits).any():
+                logger.error(f"NaN detected in logits!")
+                raise ValueError("NaN in logits")
+
         B, T, V = logits.shape
-        
+
+        # Compute loss (same for both modes)
+        # Clamp logits to prevent overflow in softmax
+        logits = torch.clamp(logits, min=-1e4, max=1e4)
         
         log_probs = F.log_softmax(logits, dim=-1)   # (B, T, V)
+        
+        # NaN check for log_probs
+        if torch.isnan(log_probs).any():
+            logger.error(f"NaN in log_probs! Logits stats - min: {logits.min()}, max: {logits.max()}")
+            raise ValueError("NaN in log_probs")
+        
         safe_labels = labels.clone()
         safe_labels[labels == -100] = 0
         logp_tok  = log_probs.gather(dim=-1, index=safe_labels.unsqueeze(-1)).squeeze(-1)     # (B, T)
@@ -438,18 +592,25 @@ def main():
 
         mask_num = (p_mask_lm).sum(dim=1).clamp(min=1)
         loss_lm = loss_lm / mask_num
-    
+
         loss_lm = loss_lm.sum() / B
+        
+        # Final NaN check
+        if torch.isnan(loss_lm):
+            logger.error(f"NaN in final loss!")
+            raise ValueError("NaN in final loss")
+        
         return loss_lm
-
-
 
     from tqdm.auto import tqdm
 
+    global_step = 0
+    log_interval = config.get('logging', {}).get('log_interval', 10)
+
     for epoch in range(first_epoch, num_train_epochs):
-        
+
         model.train()
-        
+
         progress_bar = tqdm(
             train_dataloader_lm,
             desc=f"Epoch {epoch+1}/{num_train_epochs}",
@@ -457,9 +618,9 @@ def main():
             dynamic_ncols=True,    
             leave=True          
         )
-        
+
         for step, batch in enumerate(progress_bar, start=1):
-            
+
             # for loss calculation
 
             data_time_m.update(time.time() - end)
@@ -467,6 +628,13 @@ def main():
             input_ids = batch["input_ids"].to(accelerator.device)
             labels    = batch["labels"].to(accelerator.device)
             p_mask_lm = batch["p_mask_lm"].to(accelerator.device)
+            
+            # GPU Memory Check before forward
+            if step <= 5 and torch.cuda.is_available():
+                allocated = torch.cuda.memory_allocated() / 1024**3
+                reserved = torch.cuda.memory_reserved() / 1024**3
+                total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+                logger.info(f"[Step {step} Before Forward] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB, Batch size: {input_ids.shape}")
 
             loss_lm = forward_process(
                     input_ids=input_ids,
@@ -474,9 +642,24 @@ def main():
                     p_mask_lm=p_mask_lm
                 )
             loss_lm = loss_lm / accelerator.gradient_accumulation_steps
-            if step <= 10:
-                print(loss_lm)
+            
+            # GPU Memory Check after forward
+            if step <= 5 and torch.cuda.is_available():
+                allocated = torch.cuda.memory_allocated() / 1024**3
+                reserved = torch.cuda.memory_reserved() / 1024**3
+                total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+                logger.info(f"[Step {step} After Forward] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
+            
+            # print(loss_lm)
+            logger.info(f"Step {step} Loss: {loss_lm}")
             accelerator.backward(loss_lm)
+            
+            # GPU Memory Check after backward
+            if step <= 5 and torch.cuda.is_available():
+                allocated = torch.cuda.memory_allocated() / 1024**3
+                reserved = torch.cuda.memory_reserved() / 1024**3
+                total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+                logger.info(f"[Step {step} After Backward] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
             if (step + 1) % accelerator.gradient_accumulation_steps == 0:
                 if config.training.max_grad_norm is not None:
@@ -487,23 +670,35 @@ def main():
                 lr_scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
+                # TensorBoard logging
+                if writer is not None and global_step % log_interval == 0:
+                    writer.add_scalar('train/loss', loss_lm.item() * accelerator.gradient_accumulation_steps, global_step)
+                    writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
+                    if use_latent_recursive and recursive_in_training:
+                        writer.add_scalar('train/latent_recursive_steps', latent_recursive_steps, global_step)
+
+                global_step += 1
+
                 del input_ids, labels, p_mask_lm
                 torch.cuda.empty_cache()
-
                 
-
+                # GPU Memory Check after optimizer step and cleanup
+                if global_step <= 5 and torch.cuda.is_available():
+                    allocated = torch.cuda.memory_allocated() / 1024**3
+                    reserved = torch.cuda.memory_reserved() / 1024**3
+                    total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+                    logger.info(f"[Global Step {global_step} After Cleanup] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
     accelerator.wait_for_everyone()
 
     # save checkpoint at the end of training
     save_checkpoint(model, tokenizer, config, accelerator, config.model.optimized_name)
 
+    # Close tensorboard writer
+    if writer is not None:
+        writer.close()
+
     accelerator.end_training()
-
-    
-    
-
-
 
 
 def save_checkpoint(model, tokenizer, config, accelerator, name):
@@ -536,10 +731,22 @@ def save_checkpoint(model, tokenizer, config, accelerator, name):
             state_dict=state_dict,
             safe_serialization=True,
         )
+        # Save tokenizer with all necessary files
         tokenizer.save_pretrained(str(save_base / name))
+        
+        # Also copy tokenizer files from original pretrained model to ensure compatibility
+        # This ensures AutoTokenizer can load without needing the original model path
+        pretrained_model = config.model.pretrained_model
+        try:
+            original_tokenizer = AutoTokenizer.from_pretrained(pretrained_model, trust_remote_code=True)
+            original_tokenizer.save_pretrained(str(save_base / name))
+            logger.info(f"Copied tokenizer files from {pretrained_model}")
+        except Exception as e:
+            logger.warning(f"Could not copy original tokenizer files: {e}")
 
         metadata = {
             "save_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "pretrained_model": config.model.pretrained_model,
         }
         with (save_base / "metadata.json").open("w") as f:
             json.dump(metadata, f, indent=2)
