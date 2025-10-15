@@ -29,7 +29,7 @@ export TOKENIZERS_PARALLELISM=true
 MODEL_NAME="GSAI-ML/LLaDA-8B-Instruct"  # Change this to your model
 
 # Dataset name (should exist in ./data/)
-DATASET_NAME="sft_gsm8k_llada"  # Change this to your dataset
+DATASET_NAME="sft_demon_openr1math_llada"  # Change this to your dataset
 
 # Project name (will create directory for checkpoints and logs)
 PROJECT_NAME="sft_llada_recursive"

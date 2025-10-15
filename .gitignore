@@ -1,2 +1,4 @@
 */__pycache__/
 /__pycache__/
+/sft_llada_recursive/
+*.json

@@ -45,10 +45,11 @@ logger = get_logger(__name__, log_level="INFO")
 
 
 class TrainDataset(Dataset):
-    def __init__(self, inputs, labels, pmasks):
+    def __init__(self, inputs, labels, pmasks, original_texts=None):
         self.inputs = inputs
         self.labels = labels
         self.pmasks = pmasks
+        self.original_texts = original_texts  # List of (prompt, response) tuples
 
     def __len__(self):
         return len(self.inputs)
@@ -59,6 +60,12 @@ class TrainDataset(Dataset):
             self.labels[idx],
             self.pmasks[idx]
         )
+    
+    def get_original_text(self, idx):
+        """Get original prompt/response for debugging"""
+        if self.original_texts is not None and idx < len(self.original_texts):
+            return self.original_texts[idx]
+        return None, None
 
 
 def main():
@@ -157,9 +164,9 @@ def main():
         # Load config first and modify it before loading model
         from models.llada.configuration_llada import LLaDAConfig
         model_config = LLaDAConfig.from_pretrained(pretrained_model)
-        latent_steps = config.training.get('latent_recursive_steps', 16)
+        R = config.training.get('R', 1)
         model_config.use_latent_recursive = True
-        model_config.max_latent_recursive_steps = latent_steps
+        model_config.max_latent_recursive_steps = R
         
         # Load model with modified config
         model = LLaDAModelLMRecursive.from_pretrained(
@@ -177,11 +184,21 @@ def main():
             model.model.latent_step_embedding.weight.data = model.model.latent_step_embedding.weight.data.to(torch.bfloat16)
             logger.info(f"latent_step_embedding initialized: shape={model.model.latent_step_embedding.weight.shape}, dtype={model.model.latent_step_embedding.weight.dtype}")
         
-        logger.info(f"Enabled latent recursive with max_steps={latent_steps}")
+        logger.info(f"Enabled latent recursive with max_steps={R}")
     else:
         logger.info("Loading LLaDAModelLM (original)")
         model = LLaDAModelLM.from_pretrained(pretrained_model, torch_dtype=torch.bfloat16)
+    
     model = model.to(accelerator.device)
+    
+    # Enable gradient checkpointing if configured
+    if config.training.get('gradient_checkpointing_enable', False):
+        logger.info("Enabling gradient checkpointing...")
+        if hasattr(model, 'gradient_checkpointing_enable'):
+            model.gradient_checkpointing_enable()
+        elif hasattr(model, 'enable_input_require_grads'):
+            model.enable_input_require_grads()
+        logger.info("Gradient checkpointing enabled")
     
     # Freeze first half of layers if configured
     freeze_first_half = config.training.get('freeze_first_half_layers', False)
@@ -400,7 +417,7 @@ def main():
 
     with open("./data/" + config.dataset.optimization_data + ".json", 'r') as f:
         dataset_load = json.load(f)
-    # dataset_load = dataset_load[:2000]
+    # dataset_load = dataset_load[:24]
     prompt_list = []
     response_list = []
     step_map_list = []
@@ -412,7 +429,30 @@ def main():
         else:
             step_map_list.append(x["step_map"])
     input_ids, labels, p_mask_lm, start_pos, drop_num = prepare_inputs_and_labels_for_text(prompt_list, response_list, step_map_list)
-    dataset_lm = TrainDataset(input_ids, labels, p_mask_lm)
+    
+    # Build mapping from expanded samples back to original texts
+    # Since prepare_inputs_and_labels_for_text may expand samples (multiple masks per sample),
+    # we need to track which original sample each expanded sample came from
+    original_texts = []
+    sample_idx = 0
+    for i in range(len(prompt_list)):
+        # Each original sample may generate multiple training samples
+        # We'll store the original (prompt, response) for each expanded sample
+        original_texts.append((prompt_list[i], response_list[i]))
+    
+    # Note: The actual expansion happens inside prepare_inputs_and_labels_for_text
+    # We need to replicate the expansion logic to build correct mapping
+    # For simplicity, we'll create a mapping based on the actual number of samples
+    if len(input_ids) > len(prompt_list):
+        # Samples were expanded, replicate original texts
+        expanded_texts = []
+        for i in range(len(input_ids)):
+            # Map back to original sample (approximate)
+            orig_idx = i % len(prompt_list)
+            expanded_texts.append((prompt_list[orig_idx], response_list[orig_idx]))
+        original_texts = expanded_texts
+    
+    dataset_lm = TrainDataset(input_ids, labels, p_mask_lm, original_texts=original_texts)
     
     # GPU Memory Check after data preparation
     if torch.cuda.is_available():
@@ -482,18 +522,27 @@ def main():
     import torch.nn.functional as F
 
     # Get latent recursive config (use_latent_recursive already defined above)
-    latent_recursive_steps = config.training.get('latent_recursive_steps', 0)
-    recursive_in_training = config.training.get('recursive_in_training', False)
+    # R: number of latent thinking steps
+    if not use_latent_recursive:
+        R = 0
+        recursive_in_training = False
+    else:
+        R = config.training.get('R', 1)
+        recursive_in_training = config.training.get('recursive_in_training', False)
+    
+    if use_latent_recursive and recursive_in_training:
+        logger.info(f"  Latent Recursive Training: R={R} (latent thinking steps)")
 
     def forward_process(input_ids, labels, p_mask_lm):
         """
         Forward process with optional latent recursive.
+        Training uses R steps of latent thinking, then computes loss directly.
         """
         if not (use_latent_recursive and recursive_in_training):
             # Original logic
             logits = model(input_ids).logits
         else:
-            # Latent recursive logic
+            # Latent recursive logic with R steps
             # Unwrap model from DDP
             unwrapped_model = accelerator.unwrap_model(model)
 
@@ -516,37 +565,34 @@ def main():
                 if torch.isinf(step_emb_weight).any():
                     logger.error(f"Inf in latent_step_embedding weights!")
                     raise ValueError("latent_step_embedding has Inf weights")
-                # logger.info(f"latent_step_embedding OK: min={step_emb_weight.min():.4f}, max={step_emb_weight.max():.4f}, mean={step_emb_weight.mean():.4f}")
 
             # 2. Get attention bias
             batch_size, seq_len = input_ids.shape
             attention_bias = None
-            # You may need to prepare attention_bias here based on your needs
 
-            # 3. Latent recursive phase
+            # 3. Latent recursive phase: R steps of latent thinking
             # Only keep gradient for the last step since loss is computed on final hidden_states
-            for step in range(latent_recursive_steps):
-                if step < latent_recursive_steps - 1:
+            for step in range(R):
+                if step < R - 1:
                     # Intermediate steps: no gradient tracking
                     with torch.no_grad():
-                        hidden_states_new = unwrapped_model.model.forward_latent_only(
-                            hidden_states=hidden_states,
+                        hidden_states = unwrapped_model.model.forward_latent_only(
+                            hidden_states=hidden_states.detach(),
                             latent_step=step,
                             attention_bias=attention_bias,
                         )
                     
                     # NaN check
-                    if torch.isnan(hidden_states_new).any():
+                    if torch.isnan(hidden_states).any():
                         logger.error(f"NaN detected at latent step {step}")
                         logger.error(f"Hidden states stats - min: {hidden_states.min()}, max: {hidden_states.max()}, mean: {hidden_states.mean()}")
                         raise ValueError(f"NaN at latent step {step}")
                     
-                    # Detach and clamp to prevent extreme values
-                    hidden_states = hidden_states_new.detach()
+                    # Clamp to prevent extreme values
                     hidden_states = torch.clamp(hidden_states, min=-1e4, max=1e4)
-                    hidden_states = hidden_states.requires_grad_(True)
                 else:
                     # Last step: keep gradient for backprop
+                    hidden_states = hidden_states.detach().requires_grad_(True)
                     hidden_states = unwrapped_model.model.forward_latent_only(
                         hidden_states=hidden_states,
                         latent_step=step,
@@ -558,7 +604,7 @@ def main():
                         logger.error(f"NaN detected at final latent step {step}")
                         raise ValueError(f"NaN at final latent step")
 
-            # 4. Final forward to get logits
+            # 4. Final forward to get logits (no N-step unmask simulation needed)
             if unwrapped_model.config.weight_tying:
                 logits = F.linear(hidden_states, unwrapped_model.model.transformer.wte.weight, None)
             else:
@@ -629,6 +675,51 @@ def main():
             labels    = batch["labels"].to(accelerator.device)
             p_mask_lm = batch["p_mask_lm"].to(accelerator.device)
             
+            # Debug: Print prompt/response for first 5 steps
+            if step <= 5 and accelerator.is_main_process:
+                logger.info(f"\n{'='*80}")
+                logger.info(f"[DEBUG] Step {step} - Input Inspection")
+                logger.info(f"{'='*80}")
+                
+                # Get batch info
+                batch_size = input_ids.shape[0]
+                seq_len = input_ids.shape[1]
+                logger.info(f"Batch size: {batch_size}, Sequence length: {seq_len}")
+                
+                # Print first sample in batch
+                sample_input_ids = input_ids[0].cpu()
+                sample_labels = labels[0].cpu()
+                sample_pmask = p_mask_lm[0].cpu()
+                
+                # Show mask statistics
+                mask_positions = torch.where(sample_pmask)[0].tolist()
+                num_masks = len(mask_positions)
+                mask_ratio = num_masks / seq_len
+                logger.info(f"\n[Mask Statistics]: {num_masks} masks / {seq_len} tokens = {mask_ratio:.2%}")
+                logger.info(f"[Mask positions (first 20)]: {mask_positions[:20]}...")
+                
+                # Reconstruct original text by replacing masks with labels
+                original_ids = sample_input_ids.clone()
+                mask_token_id = tokenizer.encode('<|mdm_mask|>')[0]
+                original_ids[sample_pmask] = sample_labels[sample_pmask]
+                
+                # Decode both masked and original
+                masked_text = tokenizer.decode(sample_input_ids, skip_special_tokens=True)
+                original_text = tokenizer.decode(original_ids, skip_special_tokens=True)
+                
+                logger.info(f"\n[Masked Input (what model sees)]:\n{masked_text[:400]}...")
+                logger.info(f"\n[Original Text (ground truth)]:\n{original_text[:400]}...")
+                
+                # Try to get original prompt/response from dataset
+                global_step_approx = (epoch * len(train_dataloader_lm) + step - 1) * batch_size
+                if global_step_approx < len(dataset_lm):
+                    prompt, response = dataset_lm.get_original_text(global_step_approx)
+                    if prompt is not None:
+                        logger.info(f"\n[Dataset Prompt]:\n{prompt[:300]}...")
+                        logger.info(f"\n[Dataset Response]:\n{response[:300]}...")
+                
+                logger.info(f"{'='*80}\n")
+            
             # GPU Memory Check before forward
             if step <= 5 and torch.cuda.is_available():
                 allocated = torch.cuda.memory_allocated() / 1024**3
@@ -675,7 +766,7 @@ def main():
                     writer.add_scalar('train/loss', loss_lm.item() * accelerator.gradient_accumulation_steps, global_step)
                     writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
                     if use_latent_recursive and recursive_in_training:
-                        writer.add_scalar('train/latent_recursive_steps', latent_recursive_steps, global_step)
+                        writer.add_scalar('train/R', R, global_step)
 
                 global_step += 1
 

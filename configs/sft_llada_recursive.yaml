@@ -7,32 +7,32 @@ model:
     optimized_name: "optimized_recursive"
 
 dataset:
-    optimization_data: "sft_gsm8k_llada"
+    optimization_data: "sft_demon_openr1math_llada"
 
 training:
-    gradient_checkpointing_enable: False
-    gradient_accumulation_steps: 2
-    batch_size_lm: 2
+    gradient_checkpointing_enable: False  # Enable to save memory
+    gradient_accumulation_steps: 4  # Increase to maintain effective batch size
+    batch_size_lm: 1  # Reduce to 1 to save memory
     mixed_precision: "bf16"
     enable_tf32: False
     seed: 42
     num_train_epochs: 1
     max_grad_norm: 1
-    freeze_first_half_layers: False  # Freeze first half of transformer layers
+    freeze_first_half_layers: True  # Freeze first half of transformer layers
     
     # Masking strategy
     method: "random_masking"
     lower_p: 0.1
     upper_p: 0.9
     block_size: 32
-    mask_times_per_sample: 10
+    mask_times_per_sample: 5  # Further reduce to 3
     post_num: 0
-    max_gen_length: 1024
-    max_prompt_len: 784
+    max_gen_length: 1024  # Reduce to 512 for memory
+    max_prompt_len: 784  # Reduce to 384
     
     # Latent Recursive parameters
     use_latent_recursive: True
-    latent_recursive_steps: 16  # Reduced from 16 to avoid numerical instability
+    R: 1 # latent recursive steps (before every unmask steps)
     recursive_in_training: True
 
 optimizer:
