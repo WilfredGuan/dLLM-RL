@@ -30,3 +30,6 @@ math_verify
 
 wandb
 tensorboard
+
+termcolor
+nest_asyncio

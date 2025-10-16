@@ -18,19 +18,31 @@ execute:
 rollout:
     num_response_per_task: 2
     temperature: 0.1
-    steps: 1024 # total steps of unmasking (will be adjusted based on latent_recursive_steps)
     max_gen_length: 1024
     batch_size: 1
     remasking_strategy: "low_confidence_dynamic" #"low_confidence_static""low_confidence_dynamic"
     target: "confidence" # target to decide which tokens to unmask, eg. confidence, margin_confidence and neg_entropy
     dynamic_threshold: 0.95 # no use for "low_confidence_static"
-    block_size: 32
     further_horizon: 128 # We find that performing the forward pass with a further horizon, eg. 128, (kv-cache sequence before current block, while doing full forward for currect [block_size + further_horizon] length sequence) yields competitive performance to running without KV-cache. Balances speed and performance.
     output_unmasking_history: True
     use_cache: True
+    latent_recursive_steps: 1
     
-    # Latent Recursive parameters
-    latent_recursive_steps: 16  # Number of latent forward passes before each unmask step
-                                 # This will reduce actual unmask steps to maintain same "unmask speed"
-                                 # Effective steps = steps / latent_recursive_steps
-                                 # Set to 0 to disable latent recursive
+    # ========== [R+N] Parameters ==========
+    # Core logic: Each cycle executes [R latent thinking steps + N normal forward steps]
+    # Each normal forward step unmasks unmask_token_number_per_step tokens
+    
+    R: 1                              # Number of latent thinking steps per cycle
+    N: 1                              # Number of normal forward steps per cycle
+    unmask_token_number_per_step: 2   # Number of tokens to unmask per forward step
+    block_size: 32                    # Total tokens processed per block
+                                      # Constraint: block_size must be divisible by (N * unmask_token_number_per_step)
+    
+    # ========== Calculation Example ==========
+    # With R=2, N=4, unmask_token_number_per_step=1, block_size=32:
+    # - Tokens per cycle = N * unmask_token_number_per_step = 4 * 1 = 4
+    # - Cycles per block = 32 / 4 = 8
+    # - Each cycle: 2 latent thinking + 4 forward steps (each unmask 1 token)
+    # - NFE per cycle = R + N = 2 + 4 = 6
+    # - Total blocks = 1024 / 32 = 32
+    # - Total NFE = 32 blocks × 8 cycles × 6 = 1536

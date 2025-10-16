@@ -28,9 +28,6 @@ export TOKENIZERS_PARALLELISM=true
 # Model configuration
 MODEL_NAME="GSAI-ML/LLaDA-8B-Instruct"  # Change this to your model
 
-# Dataset name (should exist in ./data/)
-DATASET_NAME="sft_demon_openr1math_llada"  # Change this to your dataset
-
 # Project name (will create directory for checkpoints and logs)
 PROJECT_NAME="sft_llada_recursive"
 
@@ -60,7 +57,6 @@ echo "============================================"
 echo "Training Configuration"
 echo "============================================"
 echo "Model: ${MODEL_NAME}"
-echo "Dataset: ${DATASET_NAME}"
 echo "Project: ${PROJECT_NAME}"
 echo "Checkpoint Dir: ${CKPT_DIR}"
 echo "Config: ${CONFIG_FILE}"
@@ -76,9 +72,6 @@ TMP_CONFIG="${PROJECT_NAME}/config_runtime.yaml"
 cp ${CONFIG_FILE} ${TMP_CONFIG}
 
 # Use sed to update the config (works on Linux)
-sed -i "s|pretrained_model: \".*\"|pretrained_model: \"${MODEL_NAME}\"|g" ${TMP_CONFIG}
-sed -i "s|optimization_data: \".*\"|optimization_data: \"${DATASET_NAME}\"|g" ${TMP_CONFIG}
-sed -i "s|project: \".*\"|project: \"${PROJECT_NAME}\"|g" ${TMP_CONFIG}
 
 echo "Updated config saved to: ${TMP_CONFIG}"
 echo ""

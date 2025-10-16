@@ -7,7 +7,7 @@ model:
     optimized_name: "optimized_recursive"
 
 dataset:
-    optimization_data: "sft_demon_openr1math_llada"
+    optimization_data: "sft_gsm8k_aug_nl_llada"
 
 training:
     gradient_checkpointing_enable: False  # Enable to save memory
@@ -25,14 +25,14 @@ training:
     lower_p: 0.1
     upper_p: 0.9
     block_size: 32
-    mask_times_per_sample: 5  # Further reduce to 3
+    mask_times_per_sample: 1  # Further reduce to 3
     post_num: 0
-    max_gen_length: 1024  # Reduce to 512 for memory
-    max_prompt_len: 784  # Reduce to 384
+    max_gen_length: 1024
+    max_prompt_len: 784
     
     # Latent Recursive parameters
     use_latent_recursive: True
-    R: 1 # latent recursive steps (before every unmask steps)
+    R: 2 # latent recursive steps (before every unmask steps)
     recursive_in_training: True
 
 optimizer:

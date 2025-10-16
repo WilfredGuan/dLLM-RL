@@ -167,14 +167,14 @@ def main():
         R = config.training.get('R', 1)
         model_config.use_latent_recursive = True
         model_config.max_latent_recursive_steps = R
-        
+
         # Load model with modified config
         model = LLaDAModelLMRecursive.from_pretrained(
             pretrained_model, 
             config=model_config,
             torch_dtype=torch.bfloat16
         )
-        
+
         from torch import nn
         # Explicitly initialize latent_step_embedding since it's not in pretrained weights
         if hasattr(model.model, 'latent_step_embedding'):
@@ -183,14 +183,14 @@ def main():
             # Convert to bfloat16 to match model dtype
             model.model.latent_step_embedding.weight.data = model.model.latent_step_embedding.weight.data.to(torch.bfloat16)
             logger.info(f"latent_step_embedding initialized: shape={model.model.latent_step_embedding.weight.shape}, dtype={model.model.latent_step_embedding.weight.dtype}")
-        
+
         logger.info(f"Enabled latent recursive with max_steps={R}")
     else:
         logger.info("Loading LLaDAModelLM (original)")
         model = LLaDAModelLM.from_pretrained(pretrained_model, torch_dtype=torch.bfloat16)
-    
+
     model = model.to(accelerator.device)
-    
+
     # Enable gradient checkpointing if configured
     if config.training.get('gradient_checkpointing_enable', False):
         logger.info("Enabling gradient checkpointing...")
@@ -199,12 +199,12 @@ def main():
         elif hasattr(model, 'enable_input_require_grads'):
             model.enable_input_require_grads()
         logger.info("Gradient checkpointing enabled")
-    
+
     # Freeze first half of layers if configured
     freeze_first_half = config.training.get('freeze_first_half_layers', False)
     if freeze_first_half:
         logger.info("Freezing first half of transformer layers...")
-        
+
         # Get the blocks
         if hasattr(model.model.transformer, 'blocks'):
             blocks = model.model.transformer.blocks
@@ -212,22 +212,22 @@ def main():
             blocks = model.model.transformer.block_groups
         else:
             raise ValueError("Cannot find transformer blocks in model")
-        
+
         n_layers = len(blocks)
         freeze_until = n_layers // 2
-        
+
         logger.info(f"Total layers: {n_layers}, Freezing layers 0-{freeze_until-1}, Training layers {freeze_until}-{n_layers-1}")
-        
+
         # Freeze first half
         for i in range(freeze_until):
             for param in blocks[i].parameters():
                 param.requires_grad = False
-        
+
         # Count trainable parameters
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in model.parameters())
         logger.info(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100*trainable_params/total_params:.2f}%)")
-    
+
     # GPU Memory Check after model loading
     if torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated() / 1024**3
@@ -416,6 +416,7 @@ def main():
         }
 
     with open("./data/" + config.dataset.optimization_data + ".json", 'r') as f:
+        print(f"Dataset Name: {config.dataset.optimization_data}")
         dataset_load = json.load(f)
     # dataset_load = dataset_load[:24]
     prompt_list = []
@@ -429,7 +430,7 @@ def main():
         else:
             step_map_list.append(x["step_map"])
     input_ids, labels, p_mask_lm, start_pos, drop_num = prepare_inputs_and_labels_for_text(prompt_list, response_list, step_map_list)
-    
+
     # Build mapping from expanded samples back to original texts
     # Since prepare_inputs_and_labels_for_text may expand samples (multiple masks per sample),
     # we need to track which original sample each expanded sample came from
@@ -439,7 +440,7 @@ def main():
         # Each original sample may generate multiple training samples
         # We'll store the original (prompt, response) for each expanded sample
         original_texts.append((prompt_list[i], response_list[i]))
-    
+
     # Note: The actual expansion happens inside prepare_inputs_and_labels_for_text
     # We need to replicate the expansion logic to build correct mapping
     # For simplicity, we'll create a mapping based on the actual number of samples
@@ -451,9 +452,9 @@ def main():
             orig_idx = i % len(prompt_list)
             expanded_texts.append((prompt_list[orig_idx], response_list[orig_idx]))
         original_texts = expanded_texts
-    
+
     dataset_lm = TrainDataset(input_ids, labels, p_mask_lm, original_texts=original_texts)
-    
+
     # GPU Memory Check after data preparation
     if torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated() / 1024**3
@@ -490,7 +491,7 @@ def main():
     model, optimizer, lr_scheduler, train_dataloader_lm = accelerator.prepare(
         model, optimizer, lr_scheduler, train_dataloader_lm
     )
-    
+
     # GPU Memory Check after accelerator prepare
     if torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated() / 1024**3
@@ -529,7 +530,7 @@ def main():
     else:
         R = config.training.get('R', 1)
         recursive_in_training = config.training.get('recursive_in_training', False)
-    
+
     if use_latent_recursive and recursive_in_training:
         logger.info(f"  Latent Recursive Training: R={R} (latent thinking steps)")
 
@@ -548,12 +549,12 @@ def main():
 
             # 1. Get initial hidden states
             hidden_states = unwrapped_model.model.transformer.wte(input_ids)
-            
+
             # NaN check for embeddings
             if torch.isnan(hidden_states).any():
                 logger.error(f"NaN detected in initial embeddings!")
                 raise ValueError("NaN in embeddings")
-            
+
             # Check latent_step_embedding weights before starting
             if hasattr(unwrapped_model.model, 'latent_step_embedding'):
                 step_emb_weight = unwrapped_model.model.latent_step_embedding.weight
@@ -581,13 +582,13 @@ def main():
                             latent_step=step,
                             attention_bias=attention_bias,
                         )
-                    
+
                     # NaN check
                     if torch.isnan(hidden_states).any():
                         logger.error(f"NaN detected at latent step {step}")
                         logger.error(f"Hidden states stats - min: {hidden_states.min()}, max: {hidden_states.max()}, mean: {hidden_states.mean()}")
                         raise ValueError(f"NaN at latent step {step}")
-                    
+
                     # Clamp to prevent extreme values
                     hidden_states = torch.clamp(hidden_states, min=-1e4, max=1e4)
                 else:
@@ -598,7 +599,7 @@ def main():
                         latent_step=step,
                         attention_bias=attention_bias,
                     )
-                    
+
                     # NaN check for final step
                     if torch.isnan(hidden_states).any():
                         logger.error(f"NaN detected at final latent step {step}")
@@ -612,7 +613,7 @@ def main():
 
             if hasattr(unwrapped_model.config, 'scale_logits') and unwrapped_model.config.scale_logits:
                 logits = logits * (1 / math.sqrt(unwrapped_model.config.d_model))
-            
+
             # NaN check for logits
             if torch.isnan(logits).any():
                 logger.error(f"NaN detected in logits!")
@@ -623,14 +624,14 @@ def main():
         # Compute loss (same for both modes)
         # Clamp logits to prevent overflow in softmax
         logits = torch.clamp(logits, min=-1e4, max=1e4)
-        
+
         log_probs = F.log_softmax(logits, dim=-1)   # (B, T, V)
-        
+
         # NaN check for log_probs
         if torch.isnan(log_probs).any():
             logger.error(f"NaN in log_probs! Logits stats - min: {logits.min()}, max: {logits.max()}")
             raise ValueError("NaN in log_probs")
-        
+
         safe_labels = labels.clone()
         safe_labels[labels == -100] = 0
         logp_tok  = log_probs.gather(dim=-1, index=safe_labels.unsqueeze(-1)).squeeze(-1)     # (B, T)
@@ -640,12 +641,12 @@ def main():
         loss_lm = loss_lm / mask_num
 
         loss_lm = loss_lm.sum() / B
-        
+
         # Final NaN check
         if torch.isnan(loss_lm):
             logger.error(f"NaN in final loss!")
             raise ValueError("NaN in final loss")
-        
+
         return loss_lm
 
     from tqdm.auto import tqdm
@@ -674,42 +675,42 @@ def main():
             input_ids = batch["input_ids"].to(accelerator.device)
             labels    = batch["labels"].to(accelerator.device)
             p_mask_lm = batch["p_mask_lm"].to(accelerator.device)
-            
+
             # Debug: Print prompt/response for first 5 steps
             if step <= 5 and accelerator.is_main_process:
                 logger.info(f"\n{'='*80}")
                 logger.info(f"[DEBUG] Step {step} - Input Inspection")
                 logger.info(f"{'='*80}")
-                
+
                 # Get batch info
                 batch_size = input_ids.shape[0]
                 seq_len = input_ids.shape[1]
                 logger.info(f"Batch size: {batch_size}, Sequence length: {seq_len}")
-                
+
                 # Print first sample in batch
                 sample_input_ids = input_ids[0].cpu()
                 sample_labels = labels[0].cpu()
                 sample_pmask = p_mask_lm[0].cpu()
-                
+
                 # Show mask statistics
                 mask_positions = torch.where(sample_pmask)[0].tolist()
                 num_masks = len(mask_positions)
                 mask_ratio = num_masks / seq_len
                 logger.info(f"\n[Mask Statistics]: {num_masks} masks / {seq_len} tokens = {mask_ratio:.2%}")
                 logger.info(f"[Mask positions (first 20)]: {mask_positions[:20]}...")
-                
+
                 # Reconstruct original text by replacing masks with labels
                 original_ids = sample_input_ids.clone()
                 mask_token_id = tokenizer.encode('<|mdm_mask|>')[0]
                 original_ids[sample_pmask] = sample_labels[sample_pmask]
-                
+
                 # Decode both masked and original
                 masked_text = tokenizer.decode(sample_input_ids, skip_special_tokens=True)
                 original_text = tokenizer.decode(original_ids, skip_special_tokens=True)
-                
+
                 logger.info(f"\n[Masked Input (what model sees)]:\n{masked_text[:400]}...")
                 logger.info(f"\n[Original Text (ground truth)]:\n{original_text[:400]}...")
-                
+
                 # Try to get original prompt/response from dataset
                 global_step_approx = (epoch * len(train_dataloader_lm) + step - 1) * batch_size
                 if global_step_approx < len(dataset_lm):
@@ -717,9 +718,9 @@ def main():
                     if prompt is not None:
                         logger.info(f"\n[Dataset Prompt]:\n{prompt[:300]}...")
                         logger.info(f"\n[Dataset Response]:\n{response[:300]}...")
-                
+
                 logger.info(f"{'='*80}\n")
-            
+
             # GPU Memory Check before forward
             if step <= 5 and torch.cuda.is_available():
                 allocated = torch.cuda.memory_allocated() / 1024**3
@@ -733,18 +734,18 @@ def main():
                     p_mask_lm=p_mask_lm
                 )
             loss_lm = loss_lm / accelerator.gradient_accumulation_steps
-            
+
             # GPU Memory Check after forward
             if step <= 5 and torch.cuda.is_available():
                 allocated = torch.cuda.memory_allocated() / 1024**3
                 reserved = torch.cuda.memory_reserved() / 1024**3
                 total = torch.cuda.get_device_properties(0).total_memory / 1024**3
                 logger.info(f"[Step {step} After Forward] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
-            
+
             # print(loss_lm)
             logger.info(f"Step {step} Loss: {loss_lm}")
             accelerator.backward(loss_lm)
-            
+
             # GPU Memory Check after backward
             if step <= 5 and torch.cuda.is_available():
                 allocated = torch.cuda.memory_allocated() / 1024**3
@@ -772,7 +773,7 @@ def main():
 
                 del input_ids, labels, p_mask_lm
                 torch.cuda.empty_cache()
-                
+
                 # GPU Memory Check after optimizer step and cleanup
                 if global_step <= 5 and torch.cuda.is_available():
                     allocated = torch.cuda.memory_allocated() / 1024**3
