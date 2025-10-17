@@ -223,6 +223,11 @@ def main():
             for param in blocks[i].parameters():
                 param.requires_grad = False
 
+        # Set freeze configuration in model for forward_latent_only
+        model.model.freeze_first_half_layers = True
+        model.model.trainable_layer_start_idx = freeze_until
+        logger.info(f"Set model.freeze_first_half_layers=True, trainable_layer_start_idx={freeze_until}")
+
         # Count trainable parameters
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in model.parameters())
@@ -415,6 +420,7 @@ def main():
             "p_mask_lm":  torch.stack(msk)
         }
 
+    from tqdm import tqdm
     with open("./data/" + config.dataset.optimization_data + ".json", 'r') as f:
         print(f"Dataset Name: {config.dataset.optimization_data}")
         dataset_load = json.load(f)
@@ -574,36 +580,34 @@ def main():
             # 3. Latent recursive phase: R steps of latent thinking
             # Only keep gradient for the last step since loss is computed on final hidden_states
             for step in range(R):
-                if step < R - 1:
-                    # Intermediate steps: no gradient tracking
-                    with torch.no_grad():
-                        hidden_states = unwrapped_model.model.forward_latent_only(
-                            hidden_states=hidden_states.detach(),
-                            latent_step=step,
-                            attention_bias=attention_bias,
-                        )
-
-                    # NaN check
-                    if torch.isnan(hidden_states).any():
-                        logger.error(f"NaN detected at latent step {step}")
-                        logger.error(f"Hidden states stats - min: {hidden_states.min()}, max: {hidden_states.max()}, mean: {hidden_states.mean()}")
-                        raise ValueError(f"NaN at latent step {step}")
-
-                    # Clamp to prevent extreme values
-                    hidden_states = torch.clamp(hidden_states, min=-1e4, max=1e4)
-                else:
+                # if step < R - 2:
+                #     # Intermediate steps: no gradient tracking
+                #     with torch.no_grad():
+                #         hidden_states = unwrapped_model.model.forward_latent_only(
+                #             hidden_states=hidden_states.detach(),
+                #             latent_step=step,
+                #             attention_bias=attention_bias,
+                #         )
+                #     # NaN check
+                #     # if torch.isnan(hidden_states).any():
+                #     #     logger.error(f"NaN detected at latent step {step}")
+                #     #     logger.error(f"Hidden states stats - min: {hidden_states.min()}, max: {hidden_states.max()}, mean: {hidden_states.mean()}")
+                #     #     raise ValueError(f"NaN at latent step {step}")
+                #     # Clamp to prevent extreme values
+                #     # hidden_states = torch.clamp(hidden_states, min=-1e4, max=1e4)
+                # else:
                     # Last step: keep gradient for backprop
-                    hidden_states = hidden_states.detach().requires_grad_(True)
-                    hidden_states = unwrapped_model.model.forward_latent_only(
-                        hidden_states=hidden_states,
-                        latent_step=step,
-                        attention_bias=attention_bias,
-                    )
+                # hidden_states = hidden_states.detach().requires_grad_(True)
+                hidden_states = unwrapped_model.model.forward_latent_only(
+                    hidden_states=hidden_states,
+                    latent_step=step,
+                    attention_bias=attention_bias,
+                )
 
-                    # NaN check for final step
-                    if torch.isnan(hidden_states).any():
-                        logger.error(f"NaN detected at final latent step {step}")
-                        raise ValueError(f"NaN at final latent step")
+                # # NaN check for final step
+                # if torch.isnan(hidden_states).any():
+                #     logger.error(f"NaN detected at final latent step {step}")
+                #     raise ValueError(f"NaN at final latent step")
 
             # 4. Final forward to get logits (no N-step unmask simulation needed)
             if unwrapped_model.config.weight_tying:

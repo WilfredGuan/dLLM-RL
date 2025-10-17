@@ -1027,6 +1027,10 @@ class LLaDAModel(nn.Module):
         super().__init__()
         self.config = config
         self.__cache = BufferCache()
+        
+        # Store freeze configuration for latent recursive
+        self.freeze_first_half_layers = False
+        self.trainable_layer_start_idx = 0
 
         # Validate config.
         if self.config.alibi and self.config.flash_attention:
@@ -1389,6 +1393,8 @@ class LLaDAModel(nn.Module):
         Forward pass in hidden space only, without projecting to vocab.
         Used for latent recursive processing.
         
+        When freeze_first_half_layers is enabled, only forward through unfrozen layers.
+        
         Args:
             hidden_states: (batch_size, seq_len, d_model)
             latent_step: Current latent recursive step (0-indexed)
@@ -1428,9 +1434,14 @@ class LLaDAModel(nn.Module):
         if torch.isnan(hidden_states).any():
             raise ValueError(f"NaN after dropout at latent_step={latent_step}")
         
-        # Apply blocks
+        # Apply blocks (only unfrozen layers if freeze is enabled)
         if self.config.block_group_size == 1:
-            for i, block in enumerate(self.transformer.blocks):
+            # Determine which blocks to use
+            blocks = self.transformer.blocks
+            start_idx = self.trainable_layer_start_idx if self.freeze_first_half_layers else 0
+            
+            for i in range(start_idx, len(blocks)):
+                block = blocks[i]
                 hidden_states, _ = block(
                     hidden_states,
                     attention_bias=attention_bias,
@@ -1441,7 +1452,18 @@ class LLaDAModel(nn.Module):
                 if torch.isnan(hidden_states).any():
                     raise ValueError(f"NaN after block {i} at latent_step={latent_step}")
         else:
-            for i, block_group in enumerate(self.transformer.block_groups):
+            # For block groups
+            block_groups = self.transformer.block_groups
+            # Calculate which block group to start from
+            if self.freeze_first_half_layers:
+                # trainable_layer_start_idx is in terms of individual layers
+                # Convert to block group index
+                start_group_idx = self.trainable_layer_start_idx // self.config.block_group_size
+            else:
+                start_group_idx = 0
+            
+            for i in range(start_group_idx, len(block_groups)):
+                block_group = block_groups[i]
                 hidden_states, _ = block_group(
                     hidden_states,
                     attention_bias=attention_bias,

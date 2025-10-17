@@ -16,7 +16,7 @@ training:
     mixed_precision: "bf16"
     enable_tf32: False
     seed: 42
-    num_train_epochs: 1
+    num_train_epochs: 2
     max_grad_norm: 1
     freeze_first_half_layers: True  # Freeze first half of transformer layers
     
@@ -25,14 +25,14 @@ training:
     lower_p: 0.1
     upper_p: 0.9
     block_size: 32
-    mask_times_per_sample: 1  # Further reduce to 3
+    mask_times_per_sample: 1
     post_num: 0
     max_gen_length: 1024
     max_prompt_len: 784
     
     # Latent Recursive parameters
     use_latent_recursive: True
-    R: 2 # latent recursive steps (before every unmask steps)
+    R: 4 # latent recursive steps (before every unmask steps)
     recursive_in_training: True
 
 optimizer:

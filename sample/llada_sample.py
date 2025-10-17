@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
 from llada.modeling_llada import LLaDAModelLM
 import multiprocessing as mp
+import logging
 
 from omegaconf import DictConfig, ListConfig, OmegaConf
 def get_config():
@@ -56,6 +57,17 @@ def generate_with_prefix_cache(
         target, mask_id, further_horizon, use_cache, unmask_threshold, latent_recursive_steps=0, rank=None, output_unmasking_history=True
     ) -> DiffusionOutput:
 
+    # Setup logger
+    logger = logging.getLogger(f"GPU-{rank}")
+    logger.setLevel(logging.DEBUG)
+    if not logger.handlers:
+        handler = logging.FileHandler(f"/geminicephfs/game-center-recmd/wilfredguan/dLLM-RL/debug_gpu_{rank}.log")
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logger.addHandler(handler)
+    
+    logger.info(f"=== Starting generate_with_prefix_cache ===")
+    logger.info(f"use_cache={use_cache}, R={R}, N={N}, latent_recursive_steps={latent_recursive_steps}")
+
     # Parameter validation
     assert gen_length % block_length == 0, f"gen_length ({gen_length}) must be divisible by block_length ({block_length})"
     assert block_length % (N * unmask_token_number_per_step) == 0, \
@@ -76,8 +88,7 @@ def generate_with_prefix_cache(
     for blk in range(num_blocks):
         s, e = L0 + blk * block_length, L0 + (blk + 1) * block_length
 
-        if rank == 0:
-            print(f"[Block {blk+1}/{num_blocks}] Processing tokens {s}-{e}")
+        logger.info(f"[Block {blk+1}/{num_blocks}] Processing tokens {s}-{e}")
 
         if cgws is not None:
             window_end  = max_length if cgws is None else min(e + cgws, max_length)
@@ -89,13 +100,31 @@ def generate_with_prefix_cache(
         # ========== Step 1: Build KV cache and first unmask (following naive version) ==========
         # First full forward to build prefix cache (only once per block)
         if use_cache:
+            logger.debug(f"[Block {blk}] Before forward: use_cache={use_cache}, x.shape={x.shape}")
+            logger.debug(f"[Block {blk}] Model type: {type(model).__name__}")
+            logger.debug(f"[Block {blk}] Model config use_cache: {model.config.use_cache if hasattr(model, 'config') else 'No config'}")
+            
             out = model(x, use_cache=True)
             pkv = out.past_key_values
-            # Chop prefix out of past_kv to keep cache small
-            new_pkv = tuple(
-                tuple(t[:, :, :s] for t in layer) for layer in pkv
-            )
-            pkv = new_pkv
+            
+            logger.debug(f"[Block {blk}] After forward: pkv is None? {pkv is None}")
+            logger.debug(f"[Block {blk}] out type: {type(out).__name__}")
+            
+            if pkv is not None:
+                logger.debug(f"[Block {blk}] pkv type: {type(pkv)}, len: {len(pkv)}")
+                if len(pkv) > 0:
+                    logger.debug(f"[Block {blk}] pkv[0] type: {type(pkv[0])}, len: {len(pkv[0])}")
+                    if len(pkv[0]) > 0:
+                        logger.debug(f"[Block {blk}] pkv[0][0].shape: {pkv[0][0].shape}")
+                # Chop prefix out of past_kv to keep cache small
+                new_pkv = tuple(
+                    tuple(t[:, :, :s] for t in layer) for layer in pkv
+                )
+                pkv = new_pkv
+            else:
+                logger.error(f"[Block {blk}] ERROR: pkv is None! This will cause the error.")
+                logger.error(f"[Block {blk}] Model forward returned None for past_key_values")
+                raise RuntimeError(f"Model returned None for past_key_values when use_cache=True")
         else:
             out = model(x, use_cache=False)
         
@@ -111,9 +140,8 @@ def generate_with_prefix_cache(
         if output_unmasking_history:
             hist.append(x.clone().cpu())
         
-        if rank == 0:
-            unmask_count = tr_idx.sum().item()
-            print(f"  [Initial Forward] {unmask_count} tokens unmasked")
+        unmask_count = tr_idx.sum().item()
+        logger.info(f"  [Initial Forward] {unmask_count} tokens unmasked")
         
         nfe += 1
         
@@ -124,13 +152,11 @@ def generate_with_prefix_cache(
                 break
             
             cycle_idx += 1
-            if rank == 0:
-                print(f"  [Cycle {cycle_idx}]")
+            logger.info(f"  [Cycle {cycle_idx}]")
             
             # ========== Phase 1: R steps of latent thinking ==========
             for lat_step in range(R):
-                if rank == 0:
-                    print(f"    [Latent] Step {lat_step+1}/{R}")
+                logger.debug(f"    [Latent] Step {lat_step+1}/{R}")
                 
                 # Latent thinking forward (no unmasking)
                 if use_cache:
@@ -145,8 +171,7 @@ def generate_with_prefix_cache(
             
             # ========== Phase 2: N steps of normal forward (each unmasks tokens) ==========
             for n_step in range(N):
-                if rank == 0:
-                    print(f"    [Inference] Forward step {n_step+1}/{N}")
+                logger.debug(f"    [Inference] Forward step {n_step+1}/{N}")
                 
                 # Determine mask for current block
                 if cgws is not None:
@@ -180,9 +205,8 @@ def generate_with_prefix_cache(
                 if output_unmasking_history:
                     hist.append(x.clone().cpu())
                 
-                if rank == 0:
-                    unmask_count = tr_idx.sum().item()
-                    print(f"      [Unmask Token Number] {unmask_count} tokens unmasked")
+                unmask_count = tr_idx.sum().item()
+                logger.debug(f"      [Unmask Token Number] {unmask_count} tokens unmasked")
                 
                 nfe += 1
                 
@@ -312,6 +336,7 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         from llada.configuration_llada import LLaDAConfig
 
         model_config = LLaDAConfig.from_pretrained(pretrained_model)
+        model_config.use_cache = True  # Enable KV cache
         model_config.use_latent_recursive = True
         model_config.max_latent_recursive_steps = latent_recursive_steps
 

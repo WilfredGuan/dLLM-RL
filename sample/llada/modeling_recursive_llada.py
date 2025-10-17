@@ -1216,7 +1216,7 @@ class LLaDAModel(nn.Module):
         # print(f"a.shape: {attention_bias.shape}")
         assert not self.config.alibi, "Alibi length extrapolation is not supported for MDM."
         assert self.config.rope, "Rope must be used in Llama-Encoder for MDM."
-        assert (past_key_values is None and not use_cache), "The kvcache is not suppotred for MDM."
+        # Note: KV cache is now supported for inference optimization
 
         output_hidden_states = output_hidden_states if output_hidden_states is not None else False
 
@@ -1523,8 +1523,8 @@ class LLaDAModelLM(PreTrainedModel):
             input_embeddings=inputs_embeds,
             attention_mask=attention_mask,
             attention_bias=attention_bias,
-            past_key_values=None,
-            use_cache=False,
+            past_key_values=past_key_values,
+            use_cache=use_cache,
             output_hidden_states=output_hidden_states,
         )
 
