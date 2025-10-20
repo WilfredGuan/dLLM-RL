@@ -23,7 +23,7 @@ if __name__ == "__main__":
     
 
     dataset = config.dataset.eval_dataset
-    pretrained_model = config.model
+    pretrained_model = config.model_path
 
     outputs_name = "eval-" + pretrained_model.replace("/", ".") + "-" + dataset
     file_name = "../" + project_name + "/temp_data/outputs-" + outputs_name + ".json"

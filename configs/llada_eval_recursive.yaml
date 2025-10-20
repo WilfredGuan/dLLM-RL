@@ -4,8 +4,11 @@ experiment:
     node_index: 0 # no need to change
 
 
-model: "/geminicephfs/game-center-recmd/wilfredguan/dLLM-RL/sft_llada_recursive/ckpt/optimized_recursive" # absolute path of your model
+model_path: "/geminicephfs/game-center-recmd/wilfredguan/dLLM-RL/sft_llada_recursive/ckpt/optimized_recursive" # absolute path of your model
 model_base: "llada" # set llada for LLaDA and MMaDA
+model:
+    freeze_first_half_layers: True  # Set to True if model was trained with frozen first half layers
+    trainable_layer_start_idx: 16   # Starting index of trainable layers (e.g., 16 for 32-layer model)
 
 # dataset you want to eval on, you need to download first, you can also modify your own dataset, see instructions in ./data
 dataset:
@@ -16,7 +19,7 @@ execute:
     num_chunk: 128 # batch size of executing codes in coding eval tasks
 
 rollout:
-    num_response_per_task: 2
+    num_response_per_task: 1
     temperature: 0.1
     max_gen_length: 1024
     batch_size: 1
@@ -32,9 +35,9 @@ rollout:
     # Core logic: Each cycle executes [R latent thinking steps + N normal forward steps]
     # Each normal forward step unmasks unmask_token_number_per_step tokens
     
-    R: 2                              # Number of latent thinking steps per cycle
+    R: 4                              # Number of latent thinking steps per cycle
     N: 1                              # Number of normal forward steps per cycle
-    unmask_token_number_per_step: 4   # Number of tokens to unmask per forward step
+    unmask_token_number_per_step: 1   # Number of tokens to unmask per forward step
     block_size: 32                    # Total tokens processed per block
                                       # Constraint: block_size must be divisible by (N * unmask_token_number_per_step)
     

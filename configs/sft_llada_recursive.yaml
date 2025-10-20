@@ -32,7 +32,7 @@ training:
     
     # Latent Recursive parameters
     use_latent_recursive: True
-    R: 4 # latent recursive steps (before every unmask steps)
+    R: 2 # latent recursive steps (before every unmask steps)
     recursive_in_training: True
 
 optimizer:
@@ -51,6 +51,10 @@ lr_scheduler:
         learning_rate: ${optimizer.params.learning_rate}
         warmup_steps: 0
         min_lr_scale: 1.0
+
+# Checkpoint configuration
+checkpoint:
+    save_checkpoint_steps: 5000  # Save checkpoint every N steps (set to null to disable)
 
 # Logging configuration
 logging:

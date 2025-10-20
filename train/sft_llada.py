@@ -97,18 +97,10 @@ def main():
 
     config.experiment.logging_dir = str(Path(config.experiment.project) / "logs")
 
-    # Setup tensorboard if enabled (create writer but log after Accelerator init)
+    # Setup tensorboard config (but create writer AFTER Accelerator init)
     use_tensorboard = config.get('logging', {}).get('use_tensorboard', False)
     writer = None
     log_dir = None
-    if use_tensorboard:
-        log_dir = Path(config.experiment.project) / "ckpt" / config.get('logging', {}).get('log_dir', 'tensorboard_logs')
-        log_dir.mkdir(parents=True, exist_ok=True)
-        if torch.distributed.is_initialized():
-            if torch.distributed.get_rank() == 0:
-                writer = SummaryWriter(str(log_dir))
-        else:
-            writer = SummaryWriter(str(log_dir))
 
     accelerator = Accelerator(
         gradient_accumulation_steps=config.training.gradient_accumulation_steps,
@@ -118,9 +110,13 @@ def main():
         split_batches=True,
     )
 
-    # Log tensorboard info after Accelerator is initialized
-    if use_tensorboard and log_dir:
-        logger.info(f"TensorBoard logging to {log_dir}")
+    # Create TensorBoard writer AFTER Accelerator is initialized (only on main process)
+    if use_tensorboard:
+        log_dir = Path(config.experiment.project) / "ckpt" / config.get('logging', {}).get('log_dir', 'tensorboard_logs')
+        if accelerator.is_main_process:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            writer = SummaryWriter(str(log_dir))
+            logger.info(f"TensorBoard logging to {log_dir}")
 
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -420,7 +416,6 @@ def main():
             "p_mask_lm":  torch.stack(msk)
         }
 
-    from tqdm import tqdm
     with open("./data/" + config.dataset.optimization_data + ".json", 'r') as f:
         print(f"Dataset Name: {config.dataset.optimization_data}")
         dataset_load = json.load(f)
@@ -550,16 +545,47 @@ def main():
             logits = model(input_ids).logits
         else:
             # Latent recursive logic with R steps
+            # Correct logic:
+            # 1. Full forward once: inputs -> all layers -> get hidden states BEFORE ln_f (倒数第二层)
+            # 2. R steps of recursive thinking in trainable layers (trainable_layer_start_idx to last block)
+            # 3. forward_latent_only already applies ln_f at the end, so we can directly compute logits
+            
             # Unwrap model from DDP
             unwrapped_model = accelerator.unwrap_model(model)
 
-            # 1. Get initial hidden states
-            hidden_states = unwrapped_model.model.transformer.wte(input_ids)
+            # 1. Full forward once to get hidden states BEFORE ln_f (倒数第二层)
+            batch_size, seq_len = input_ids.shape
+            
+            # Get embeddings
+            x = unwrapped_model.model.transformer.wte(input_ids)
+            if unwrapped_model.config.input_emb_norm:
+                x = x * (unwrapped_model.config.d_model**0.5)
+            x = unwrapped_model.model.transformer.emb_drop(x)
+            
+            # Get attention bias (import get_causal_attention_bias if needed)
+            from models.llada.modeling_recursive_llada import get_causal_attention_bias
+            attention_bias = get_causal_attention_bias(
+                unwrapped_model.model._LLaDAModel__cache, seq_len, x.device
+            )
+            attention_bias = attention_bias[:, :, :seq_len, :seq_len].to(dtype=torch.float)
+            
+            # Forward through all blocks to get hidden states before ln_f
+            if unwrapped_model.config.block_group_size == 1:
+                for block in unwrapped_model.model.transformer.blocks:
+                    x, _ = block(x, attention_bias=attention_bias, layer_past=None, use_cache=False)
+            else:
+                for block_group in unwrapped_model.model.transformer.block_groups:
+                    x, _ = block_group(x, attention_bias=attention_bias, layers_past=None, use_cache=False)
+            
+            # Now x is the hidden states BEFORE ln_f (倒数第二层)
+            hidden_states = x
+            
+            logger.debug(f"Got hidden states before ln_f, shape: {hidden_states.shape}")
 
-            # NaN check for embeddings
+            # NaN check for hidden states
             if torch.isnan(hidden_states).any():
-                logger.error(f"NaN detected in initial embeddings!")
-                raise ValueError("NaN in embeddings")
+                logger.error(f"NaN detected in hidden states before ln_f!")
+                raise ValueError("NaN in hidden states after initial forward")
 
             # Check latent_step_embedding weights before starting
             if hasattr(unwrapped_model.model, 'latent_step_embedding'):
@@ -573,43 +599,31 @@ def main():
                     logger.error(f"Inf in latent_step_embedding weights!")
                     raise ValueError("latent_step_embedding has Inf weights")
 
-            # 2. Get attention bias
-            batch_size, seq_len = input_ids.shape
-            attention_bias = None
-
-            # 3. Latent recursive phase: R steps of latent thinking
-            # Only keep gradient for the last step since loss is computed on final hidden_states
+            # 2. Latent recursive phase: R steps of latent thinking in trainable layers
+            # forward_latent_only will process from trainable_layer_start_idx to last block (循环)
             for step in range(R):
-                # if step < R - 2:
-                #     # Intermediate steps: no gradient tracking
-                #     with torch.no_grad():
-                #         hidden_states = unwrapped_model.model.forward_latent_only(
-                #             hidden_states=hidden_states.detach(),
-                #             latent_step=step,
-                #             attention_bias=attention_bias,
-                #         )
-                #     # NaN check
-                #     # if torch.isnan(hidden_states).any():
-                #     #     logger.error(f"NaN detected at latent step {step}")
-                #     #     logger.error(f"Hidden states stats - min: {hidden_states.min()}, max: {hidden_states.max()}, mean: {hidden_states.mean()}")
-                #     #     raise ValueError(f"NaN at latent step {step}")
-                #     # Clamp to prevent extreme values
-                #     # hidden_states = torch.clamp(hidden_states, min=-1e4, max=1e4)
-                # else:
-                    # Last step: keep gradient for backprop
-                # hidden_states = hidden_states.detach().requires_grad_(True)
                 hidden_states = unwrapped_model.model.forward_latent_only(
                     hidden_states=hidden_states,
                     latent_step=step,
                     attention_bias=attention_bias,
                 )
+                
+                logger.debug(f"Completed latent step {step+1}/{R}")
 
-                # # NaN check for final step
-                # if torch.isnan(hidden_states).any():
-                #     logger.error(f"NaN detected at final latent step {step}")
-                #     raise ValueError(f"NaN at final latent step")
+                # NaN check
+                if torch.isnan(hidden_states).any():
+                    logger.error(f"NaN detected at latent step {step}")
+                    raise ValueError(f"NaN at latent step {step}")
 
-            # 4. Final forward to get logits (no N-step unmask simulation needed)
+            # 3. Apply ln_f after all recursive steps
+            hidden_states = unwrapped_model.model.transformer.ln_f(hidden_states)
+            
+            # NaN check after ln_f
+            if torch.isnan(hidden_states).any():
+                logger.error(f"NaN detected after ln_f!")
+                raise ValueError("NaN after ln_f")
+
+            # 4. Compute logits from final hidden states
             if unwrapped_model.config.weight_tying:
                 logits = F.linear(hidden_states, unwrapped_model.model.transformer.wte.weight, None)
             else:
@@ -657,6 +671,10 @@ def main():
 
     global_step = 0
     log_interval = config.get('logging', {}).get('log_interval', 10)
+    save_checkpoint_steps = config.get('checkpoint', {}).get('save_checkpoint_steps', None)
+    
+    if save_checkpoint_steps is not None:
+        logger.info(f"  Checkpoint saving enabled: every {save_checkpoint_steps} steps")
 
     for epoch in range(first_epoch, num_train_epochs):
 
@@ -766,14 +784,22 @@ def main():
                 lr_scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
-                # TensorBoard logging
+                # Increment global_step FIRST
+                global_step += 1
+
+                # TensorBoard logging (use updated global_step)
                 if writer is not None and global_step % log_interval == 0:
                     writer.add_scalar('train/loss', loss_lm.item() * accelerator.gradient_accumulation_steps, global_step)
                     writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
                     if use_latent_recursive and recursive_in_training:
                         writer.add_scalar('train/R', R, global_step)
-
-                global_step += 1
+                    writer.flush()  # Ensure data is written to disk
+                
+                # Save checkpoint at specified intervals
+                if save_checkpoint_steps is not None and global_step % save_checkpoint_steps == 0:
+                    logger.info(f"Saving checkpoint at step {global_step}...")
+                    save_checkpoint_with_step(model, tokenizer, config, accelerator, global_step)
+                    accelerator.wait_for_everyone()
 
                 del input_ids, labels, p_mask_lm
                 torch.cuda.empty_cache()
@@ -795,6 +821,54 @@ def main():
         writer.close()
 
     accelerator.end_training()
+
+
+def save_checkpoint_with_step(model, tokenizer, config, accelerator, global_step):
+    """
+    Save checkpoint with complete training state at specific step.
+    Saves to: {project}/ckpt/checkpoint-{step}/
+    """
+    output_dir = Path(config.experiment.project) / "ckpt"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    checkpoint_dir = output_dir / f"checkpoint-{global_step}"
+    
+    # Save complete training state (optimizer, lr_scheduler, RNG, etc.)
+    accelerator.save_state(str(checkpoint_dir))
+    
+    # Additionally save model and tokenizer in HuggingFace format
+    if accelerator.is_main_process:
+        model_to_save = accelerator.unwrap_model(model)
+        state_dict = accelerator.get_state_dict(model)
+        
+        model_to_save.save_pretrained(
+            checkpoint_dir,
+            save_function=accelerator.save,
+            state_dict=state_dict,
+            safe_serialization=True,
+        )
+        
+        # Save tokenizer
+        tokenizer.save_pretrained(str(checkpoint_dir))
+        
+        # Save freeze configuration to metadata
+        freeze_config = {
+            "freeze_first_half_layers": getattr(model_to_save.model, 'freeze_first_half_layers', False),
+            "trainable_layer_start_idx": getattr(model_to_save.model, 'trainable_layer_start_idx', 0),
+        }
+        
+        # Save metadata
+        metadata = {
+            "global_step": global_step,
+            "save_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "pretrained_model": config.model.pretrained_model,
+            "freeze_config": freeze_config,
+        }
+        with (checkpoint_dir / "metadata.json").open("w") as f:
+            json.dump(metadata, f, indent=2)
+        
+        logger.info(f"Saved checkpoint at step {global_step} to {checkpoint_dir}")
+        logger.info(f"Saved freeze config: {freeze_config}")
 
 
 def save_checkpoint(model, tokenizer, config, accelerator, name):
@@ -840,14 +914,22 @@ def save_checkpoint(model, tokenizer, config, accelerator, name):
         except Exception as e:
             logger.warning(f"Could not copy original tokenizer files: {e}")
 
+        # Save freeze configuration to metadata
+        freeze_config = {
+            "freeze_first_half_layers": getattr(model_to_save.model, 'freeze_first_half_layers', False),
+            "trainable_layer_start_idx": getattr(model_to_save.model, 'trainable_layer_start_idx', 0),
+        }
+        
         metadata = {
             "save_time": time.strftime("%Y-%m-%d %H:%M:%S"),
             "pretrained_model": config.model.pretrained_model,
+            "freeze_config": freeze_config,
         }
         with (save_base / "metadata.json").open("w") as f:
             json.dump(metadata, f, indent=2)
 
         logger.info(f"Saved model + tokenizer to {save_base / name}")
+        logger.info(f"Saved freeze config: {freeze_config}")
 
 
 if __name__ == "__main__":

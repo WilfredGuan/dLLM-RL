@@ -2,3 +2,4 @@
 /__pycache__/
 /sft_llada_recursive/
 *.json
+out_log.txt

@@ -155,21 +155,113 @@ def generate_with_prefix_cache(
             logger.info(f"  [Cycle {cycle_idx}]")
             
             # ========== Phase 1: R steps of latent thinking ==========
-            for lat_step in range(R):
-                logger.debug(f"    [Latent] Step {lat_step+1}/{R}")
+            if R > 0 and latent_recursive_steps > 0:
+                # Use latent recursive: R steps in hidden space (consistent with training)
+                # Training logic: R steps latent thinking -> compute logits -> compute loss (1 unmask)
+                # Inference logic: R steps latent thinking -> compute logits -> unmask once -> next cycle
+                # IMPORTANT: No N steps after latent recursive to match training
+                logger.debug(f"    [Latent Recursive] Starting {R} steps of latent thinking")
                 
-                # Latent thinking forward (no unmasking)
-                if use_cache:
-                    if cgws is not None:
-                        _ = model(x[:, window_slice], past_key_values=pkv, use_cache=True)
-                    else:
-                        _ = model(x[:, s:], past_key_values=pkv, use_cache=True)
+                # Get current input slice
+                if cgws is not None:
+                    current_input = x[:, window_slice]
                 else:
-                    _ = model(x, use_cache=False)
+                    current_input = x[:, s:]
                 
-                nfe += 1
+                # 1. Full forward once to get hidden states BEFORE ln_f (倒数第二层)
+                # This matches training logic
+                hidden_states = model.model.transformer.wte(current_input)
+                if model.config.input_emb_norm:
+                    hidden_states = hidden_states * (model.config.d_model**0.5)
+                hidden_states = model.model.transformer.emb_drop(hidden_states)
+                
+                # Get attention bias
+                from llada.modeling_recursive_llada import get_causal_attention_bias
+                seq_len = current_input.shape[1]
+                attention_bias = get_causal_attention_bias(
+                    model.model._LLaDAModel__cache, seq_len, hidden_states.device
+                )
+                attention_bias = attention_bias[:, :, :seq_len, :seq_len].to(dtype=torch.float)
+                
+                # Forward through all blocks to get hidden states before ln_f
+                if model.config.block_group_size == 1:
+                    for block in model.model.transformer.blocks:
+                        hidden_states, _ = block(hidden_states, attention_bias=attention_bias, layer_past=None, use_cache=False)
+                else:
+                    for block_group in model.model.transformer.block_groups:
+                        hidden_states, _ = block_group(hidden_states, attention_bias=attention_bias, layers_past=None, use_cache=False)
+                
+                # Now hidden_states is BEFORE ln_f (倒数第二层)
+                
+                # 2. R steps of latent thinking in trainable layers (same as training)
+                for lat_step in range(R):
+                    logger.debug(f"      [Latent] Step {lat_step+1}/{R}")
+                    hidden_states = model.model.forward_latent_only(
+                        hidden_states=hidden_states,
+                        latent_step=lat_step,
+                        attention_bias=attention_bias,
+                    )
+                    nfe += 1
+                
+                # 3. Apply ln_f after all recursive steps (same as training)
+                hidden_states = model.model.transformer.ln_f(hidden_states)
+                
+                # 4. Get logits from final hidden states (same as training)
+                if model.config.weight_tying:
+                    logits = F.linear(hidden_states, model.model.transformer.wte.weight, None)
+                else:
+                    logits = model.model.transformer.ff_out(hidden_states)
+                
+                if hasattr(model.config, 'scale_logits') and model.config.scale_logits:
+                    import math
+                    logits = logits * (1 / math.sqrt(model.config.d_model))
+                
+                # 4. Unmask tokens based on logits (same as training: 1 unmask after R steps)
+                if cgws is not None:
+                    mask_blk = (x[:, window_slice] == mask_id)
+                else:
+                    mask_blk = (x[:, s:] == mask_id)
+                mask_blk[:, block_length:] = 0
+                
+                x0, tr_idx = get_transfer_index(
+                    logits, temperature, target,
+                    mask_blk, current_input, num_transfer[:, 0], unmask_threshold)
+                
+                if cgws is not None:
+                    x[:, window_slice][tr_idx] = x0[tr_idx]
+                else:
+                    x[:, s:][tr_idx] = x0[tr_idx]
+                
+                if output_unmasking_history:
+                    hist.append(x.clone().cpu())
+                
+                unmask_count = tr_idx.sum().item()
+                logger.debug(f"      [After Latent Recursive] {unmask_count} tokens unmasked")
+                
+                # Check if all tokens in current block are unmasked after latent thinking
+                if (x[:, s:e] == mask_id).sum() == 0:
+                    break
+                
+                # Skip N steps to match training (training only does R steps + 1 unmask)
+                continue
+            else:
+                # Original logic: R steps of normal forward (no latent recursive)
+                for lat_step in range(R):
+                    logger.debug(f"    [Latent] Step {lat_step+1}/{R}")
+                    
+                    # Latent thinking forward (no unmasking)
+                    if use_cache:
+                        if cgws is not None:
+                            _ = model(x[:, window_slice], past_key_values=pkv, use_cache=True)
+                        else:
+                            _ = model(x[:, s:], past_key_values=pkv, use_cache=True)
+                    else:
+                        _ = model(x, use_cache=False)
+                    
+                    nfe += 1
             
             # ========== Phase 2: N steps of normal forward (each unmasks tokens) ==========
+            # This phase is SKIPPED when using latent recursive (due to continue above)
             for n_step in range(N):
                 logger.debug(f"    [Inference] Forward step {n_step+1}/{N}")
                 
@@ -325,6 +417,14 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
     torch.cuda.set_device(rank)
     device = torch.device(f"cuda:{rank}")
 
+    # Setup logger for this worker
+    logger = logging.getLogger(f"GPU-{rank}")
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        handler = logging.FileHandler(f"/geminicephfs/game-center-recmd/wilfredguan/dLLM-RL/debug_gpu_{rank}.log")
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logger.addHandler(handler)
+
     # Check if we need latent recursive model
     latent_recursive_steps = config.rollout.get("R", 0)
 
@@ -347,6 +447,15 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
                                       torch_dtype=torch.bfloat16)
                      .to(device)
                      .eval())
+        
+        # Load freeze configuration from yaml config
+        freeze_first_half = config.model.get('freeze_first_half_layers', False)
+        trainable_start_idx = config.model.get('trainable_layer_start_idx', 0)
+        
+        model_gpu.model.freeze_first_half_layers = freeze_first_half
+        model_gpu.model.trainable_layer_start_idx = trainable_start_idx
+        
+        logger.info(f"[GPU {rank}] Loaded freeze config from yaml: freeze_first_half_layers={freeze_first_half}, trainable_layer_start_idx={trainable_start_idx}")
     else:
         # Load standard model
         model_gpu = (LLaDAModelLM
@@ -450,7 +559,7 @@ if __name__ == "__main__":
     code_eval = False
     
     dataset = config.dataset.eval_dataset
-    pretrained_model = config.model
+    pretrained_model = config.model_path
     if config.dataset.data_type == "code":
         code_eval = True
         system_prompts_function = '''<|startoftext|><|start_header_id|>user<|end_header_id|>{{problem}}\nPlace your code within a single Python code block ```python ```. Do not include more than one code block. <|eot_id|><|startoftext|><|start_header_id|>assistant<|end_header_id|>\n'''
