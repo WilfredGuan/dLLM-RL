@@ -19,7 +19,7 @@ training:
     mixed_precision: "bf16"
     enable_tf32: False
     seed: 42
-    num_train_epochs: 5
+    num_train_epochs: 10
     max_grad_norm: 1
 
     # Masking strategy
@@ -57,6 +57,6 @@ lr_scheduler:
 
 # Logging configuration
 logging:
-    backend: "none"   # 可选: "wandb" | "tensorboard" | "none"
+    backend: "wandb"   # 可选: "wandb" | "tensorboard" | "none"
     log_dir: "tensorboard_logs"
     log_interval: 5

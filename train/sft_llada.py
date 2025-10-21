@@ -690,12 +690,11 @@ def main():
                         metrics['train/R'] = R
                     accelerator.log(metrics, step=global_step)
 
-                # # TensorBoard logging
-                # if writer is not None and global_step % log_interval == 0:
-                #     writer.add_scalar('train/loss', loss_lm.item() * accelerator.gradient_accumulation_steps, global_step)
-                #     writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
-                #     if use_latent_recursive and recursive_in_training:
-                #         writer.add_scalar('train/R', R, global_step)
+                # Save checkpoint at the end of each epoch with epoch and global_step in the filename
+                if (step + 1) % len(train_dataloader_lm) == 0:  # End of the epoch
+                    checkpoint_name = f"checkpoint-epoch{epoch+1}-step{global_step}.pth"
+                    save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name)
+
 
                 global_step += 1
 

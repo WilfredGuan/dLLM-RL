@@ -1,0 +1,16 @@
+2025-10-21 11:26:02,044 INFO    MainThread:174169 [wandb_init.py:setup_run_log_directory():703] Logging user logs to /mnt/shared-storage-user/gaoxin1/project/dLLM-RL/wandb/offline-run-20251021_112602-8dgs5oym/logs/debug.log
+2025-10-21 11:26:02,044 INFO    MainThread:174169 [wandb_init.py:setup_run_log_directory():704] Logging internal logs to /mnt/shared-storage-user/gaoxin1/project/dLLM-RL/wandb/offline-run-20251021_112602-8dgs5oym/logs/debug-internal.log
+2025-10-21 11:26:02,044 INFO    MainThread:174169 [wandb_init.py:init():830] calling init triggers
+2025-10-21 11:26:02,044 INFO    MainThread:174169 [wandb_init.py:init():835] wandb.init called with sweep_config: {}
+config: {'experiment': {'project': 'sft_llada_recursive', 'num_node': 1, 'logging_dir': 'sft_llada_recursive/logs'}, 'debug': False, 'model': {'pretrained_model': '/mnt/shared-storage-user/formalverification-shared/gaoxin/models/LLaDA-8B-Instruct', 'optimized_name': 'optimized_recursive'}, 'dataset': {'train_data': 'gsm8k_aug_nl', 'validation_data': 'gsm8k_aug_nl'}, 'training': {'gradient_checkpointing_enable': False, 'gradient_accumulation_steps': 4, 'batch_size_lm': 16, 'mixed_precision': 'bf16', 'enable_tf32': False, 'seed': 42, 'num_train_epochs': 10, 'max_grad_norm': 1, 'method': 'random_masking', 'lower_p': 0.1, 'upper_p': 0.9, 'block_size': 32, 'mask_times_per_sample': 1, 'post_num': 0, 'max_gen_length': 1024, 'max_prompt_len': 784, 'use_latent_recursive': True, 'R': 2, 'recursive_in_training': True, 'low_level_end_idx': 6}, 'optimizer': {'name': 'adamw', 'params': {'learning_rate': 1e-05, 'scale_lr': False, 'beta1': 0.9, 'beta2': 0.999, 'weight_decay': 0.0, 'epsilon': 1e-08}}, 'lr_scheduler': {'scheduler': 'cosine', 'params': {'learning_rate': 1e-05, 'warmup_steps': 0, 'min_lr_scale': 1.0}}, 'logging': {'backend': 'wandb', 'log_dir': 'tensorboard_logs', 'log_interval': 5}, 'config': 'configs/sft_llada_recursive.yaml', '_wandb': {}}
+2025-10-21 11:26:02,045 INFO    MainThread:174169 [wandb_init.py:init():871] starting backend
+2025-10-21 11:26:02,045 INFO    MainThread:174169 [wandb_init.py:init():874] sending inform_init request
+2025-10-21 11:26:02,046 INFO    MainThread:174169 [wandb_init.py:init():882] backend started and connected
+2025-10-21 11:26:02,047 INFO    MainThread:174169 [wandb_init.py:init():953] updated telemetry
+2025-10-21 11:26:02,051 INFO    MainThread:174169 [wandb_init.py:init():977] communicating run to backend with 90.0 second timeout
+2025-10-21 11:26:02,299 INFO    MainThread:174169 [wandb_init.py:init():1029] starting run threads in backend
+2025-10-21 11:26:02,385 INFO    MainThread:174169 [wandb_run.py:_console_start():2494] atexit reg
+2025-10-21 11:26:02,385 INFO    MainThread:174169 [wandb_run.py:_redirect():2342] redirect: wrap_raw
+2025-10-21 11:26:02,385 INFO    MainThread:174169 [wandb_run.py:_redirect():2411] Wrapping output streams.
+2025-10-21 11:26:02,385 INFO    MainThread:174169 [wandb_run.py:_redirect():2434] Redirects installed.
+2025-10-21 11:26:02,386 INFO    MainThread:174169 [wandb_init.py:init():1075] run started, returning control to user process
