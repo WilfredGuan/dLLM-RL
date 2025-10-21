@@ -66,7 +66,7 @@ def generate_with_prefix_cache(
         logger.addHandler(handler)
     
     logger.info(f"=== Starting generate_with_prefix_cache ===")
-    logger.info(f"use_cache={use_cache}, R={R}, N={N}, latent_recursive_steps={latent_recursive_steps}")
+    logger.info(f"use_cache={use_cache}, R={R}, N={N}")
 
     # Parameter validation
     assert gen_length % block_length == 0, f"gen_length ({gen_length}) must be divisible by block_length ({block_length})"
@@ -155,21 +155,19 @@ def generate_with_prefix_cache(
             logger.info(f"  [Cycle {cycle_idx}]")
             
             # ========== Phase 1: R steps of latent thinking ==========
-            if R > 0 and latent_recursive_steps > 0:
+            if R > 0:
                 # Use latent recursive: R steps in hidden space (consistent with training)
                 # Training logic: R steps latent thinking -> compute logits -> compute loss (1 unmask)
                 # Inference logic: R steps latent thinking -> compute logits -> unmask once -> next cycle
                 # IMPORTANT: No N steps after latent recursive to match training
                 logger.debug(f"    [Latent Recursive] Starting {R} steps of latent thinking")
                 
-                # Get current input slice
-                if cgws is not None:
-                    current_input = x[:, window_slice]
-                else:
-                    current_input = x[:, s:]
+                # CRITICAL FIX: Use complete x (not truncated) to maintain full context
+                # This matches training where full input_ids are used
+                # Reference: llada_sample_naive.py uses full x in model(x, use_cache=False)
+                current_input = x
                 
-                # 1. Full forward once to get hidden states BEFORE ln_f (倒数第二层)
-                # This matches training logic
+                # 1. Full forward once to get hidden states BEFORE ln_f
                 hidden_states = model.model.transformer.wte(current_input)
                 if model.config.input_emb_norm:
                     hidden_states = hidden_states * (model.config.d_model**0.5)
@@ -190,9 +188,7 @@ def generate_with_prefix_cache(
                 else:
                     for block_group in model.model.transformer.block_groups:
                         hidden_states, _ = block_group(hidden_states, attention_bias=attention_bias, layers_past=None, use_cache=False)
-                
-                # Now hidden_states is BEFORE ln_f (倒数第二层)
-                
+                                
                 # 2. R steps of latent thinking in trainable layers (same as training)
                 for lat_step in range(R):
                     logger.debug(f"      [Latent] Step {lat_step+1}/{R}")
@@ -216,21 +212,19 @@ def generate_with_prefix_cache(
                     import math
                     logits = logits * (1 / math.sqrt(model.config.d_model))
                 
-                # 4. Unmask tokens based on logits (same as training: 1 unmask after R steps)
-                if cgws is not None:
-                    mask_blk = (x[:, window_slice] == mask_id)
-                else:
-                    mask_blk = (x[:, s:] == mask_id)
+                # 5. Unmask tokens based on logits (same as training: 1 unmask after R steps)
+                # Reference: naive version uses logits[:, s:] and x[:, s:]
+                mask_blk = (x[:, s:] == mask_id)
                 mask_blk[:, block_length:] = 0
                 
-                x0, tr_idx = get_transfer_index(
-                    logits, temperature, target,
-                    mask_blk, current_input, num_transfer[:, 0], unmask_threshold)
+                # Use logits from position s onwards (matching the block we're working on)
+                logits_slice = logits[:, s:]
                 
-                if cgws is not None:
-                    x[:, window_slice][tr_idx] = x0[tr_idx]
-                else:
-                    x[:, s:][tr_idx] = x0[tr_idx]
+                x0, tr_idx = get_transfer_index(
+                    logits_slice, temperature, target,
+                    mask_blk, x[:, s:], num_transfer[:, 0], unmask_threshold)
+                
+                x[:, s:][tr_idx] = x0[tr_idx]
                 
                 if output_unmasking_history:
                     hist.append(x.clone().cpu())
@@ -426,6 +420,7 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         logger.addHandler(handler)
 
     # Check if we need latent recursive model
+    # R is the number of latent thinking steps per cycle
     latent_recursive_steps = config.rollout.get("R", 0)
 
     # load model once
@@ -448,14 +443,25 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
                      .to(device)
                      .eval())
         
-        # Load freeze configuration from yaml config
-        freeze_first_half = config.model.get('freeze_first_half_layers', False)
-        trainable_start_idx = config.model.get('trainable_layer_start_idx', 0)
+        # Load freeze configuration: try metadata.json first, then fall back to yaml config
+        import os
+        metadata_path = os.path.join(pretrained_model, "metadata.json")
+        if os.path.exists(metadata_path):
+            import json
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+            freeze_config = metadata.get('freeze_config', {})
+            freeze_first_half = freeze_config.get('freeze_first_half_layers', False)
+            trainable_start_idx = freeze_config.get('trainable_layer_start_idx', 0)
+            logger.info(f"[GPU {rank}] Loaded freeze config from metadata.json: freeze_first_half_layers={freeze_first_half}, trainable_layer_start_idx={trainable_start_idx}")
+        else:
+            # Fall back to yaml config
+            freeze_first_half = config.model.get('freeze_first_half_layers', False)
+            trainable_start_idx = config.model.get('trainable_layer_start_idx', 0)
+            logger.info(f"[GPU {rank}] Loaded freeze config from yaml (metadata.json not found): freeze_first_half_layers={freeze_first_half}, trainable_layer_start_idx={trainable_start_idx}")
         
         model_gpu.model.freeze_first_half_layers = freeze_first_half
         model_gpu.model.trainable_layer_start_idx = trainable_start_idx
-        
-        logger.info(f"[GPU {rank}] Loaded freeze config from yaml: freeze_first_half_layers={freeze_first_half}, trainable_layer_start_idx={trainable_start_idx}")
     else:
         # Load standard model
         model_gpu = (LLaDAModelLM

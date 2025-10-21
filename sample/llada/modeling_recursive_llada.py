@@ -1474,12 +1474,13 @@ class LLaDAModel(nn.Module):
                 if torch.isnan(hidden_states).any():
                     raise ValueError(f"NaN after block_group {i} at latent_step={latent_step}")
         
-        # Apply final layer norm
-        hidden_states = self.transformer.ln_f(hidden_states)
+        # Note: Do NOT apply ln_f here, as recursive should loop within trainable layers only
+        # ln_f should be applied after all recursive steps are done (in the calling code)
+        # This matches the training logic in sft_llada.py
         
-        # Check for NaN after final layer norm
+        # Check for NaN after blocks
         if torch.isnan(hidden_states).any():
-            raise ValueError(f"NaN after final layer norm at latent_step={latent_step}")
+            raise ValueError(f"NaN after blocks at latent_step={latent_step}")
         
         return hidden_states
 

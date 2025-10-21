@@ -20,7 +20,7 @@ execute:
 
 rollout:
     num_response_per_task: 1
-    temperature: 0.1
+    temperature: 1.0
     max_gen_length: 1024
     batch_size: 1
     remasking_strategy: "low_confidence_static" #"low_confidence_static""low_confidence_dynamic"
@@ -29,13 +29,12 @@ rollout:
     further_horizon: 128 # We find that performing the forward pass with a further horizon, eg. 128, (kv-cache sequence before current block, while doing full forward for currect [block_size + further_horizon] length sequence) yields competitive performance to running without KV-cache. Balances speed and performance.
     output_unmasking_history: True
     use_cache: True
-    latent_recursive_steps: 1
     
     # ========== [R+N] Parameters ==========
     # Core logic: Each cycle executes [R latent thinking steps + N normal forward steps]
     # Each normal forward step unmasks unmask_token_number_per_step tokens
     
-    R: 4                              # Number of latent thinking steps per cycle
+    R: 2                              # Number of latent thinking steps per cycle
     N: 1                              # Number of normal forward steps per cycle
     unmask_token_number_per_step: 1   # Number of tokens to unmask per forward step
     block_size: 32                    # Total tokens processed per block
