@@ -3,3 +3,4 @@
 /sft_llada_recursive/
 *.json
 output.txt
+/wandb/
