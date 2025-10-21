@@ -15,8 +15,8 @@ import numpy as np
 from PIL import Image
 from omegaconf import OmegaConf
 import torch
+from torch import nn
 from torch.optim import AdamW
-from torch.utils.tensorboard import SummaryWriter
 
 from transformers import AutoTokenizer
 from accelerate import Accelerator
@@ -26,10 +26,11 @@ from accelerate.utils import set_seed
 
 from train.utils import get_config, flatten_omega_conf, AverageMeter
 
-from models import LLaDAModelLM, LLaDAModelLMRecursive
+from models import LLaDAModelLM, LLaDAModelLMRecursive, InnerCarry
 from train.prompting_utils import UniversalPrompting
 from models.lr_schedulers import get_scheduler
 from models.logging import set_verbosity_info, set_verbosity_error
+from data.preprocess_sft import sft_preprocess_gsm8k_aug_nl
 
 from torch.utils.data import Dataset, DataLoader
 
@@ -40,6 +41,9 @@ try:
     is_apex_available = True
 except ImportError:
     is_apex_available = False
+
+os.environ["WANDB_MODE"] = "offline"
+
 
 logger = get_logger(__name__, log_level="INFO")
 
@@ -68,23 +72,25 @@ class TrainDataset(Dataset):
         return None, None
 
 
+
+
 def main():
-    #########################
-    # Parse arguments       #
-    #########################
-    parser = argparse.ArgumentParser(description="SFT training for LLaDA")
-    parser.add_argument(
-        '--config',
-        type=str,
-        default='configs/sft_llada.yaml',
-        help='Path to config yaml file'
-    )
-    args = parser.parse_args()
+    # #########################
+    # # Parse arguments       #
+    # #########################
+    # parser = argparse.ArgumentParser(description="SFT training for LLaDA")
+    # parser.add_argument(
+    #     '--config',
+    #     type=str,
+    #     default='configs/sft_llada.yaml',
+    #     help='Path to config yaml file'
+    # )
+    # args = parser.parse_args()
 
     #########################
     # SETUP Accelerator     #
     #########################
-    config = get_config(config_path=args.config)
+    config = get_config()
 
     project_name = config.experiment.project
     pretrained_model = config.model.pretrained_model
@@ -97,37 +103,42 @@ def main():
 
     config.experiment.logging_dir = str(Path(config.experiment.project) / "logs")
 
-    # Setup tensorboard if enabled (create writer but log after Accelerator init)
-    use_tensorboard = config.get('logging', {}).get('use_tensorboard', False)
-    writer = None
-    log_dir = None
-    if use_tensorboard:
-        log_dir = Path(config.experiment.project) / "ckpt" / config.get('logging', {}).get('log_dir', 'tensorboard_logs')
-        log_dir.mkdir(parents=True, exist_ok=True)
-        if torch.distributed.is_initialized():
-            if torch.distributed.get_rank() == 0:
-                writer = SummaryWriter(str(log_dir))
-        else:
-            writer = SummaryWriter(str(log_dir))
+    # ---- New: choose logging backend from config ----
+    log_cfg = config.get('logging', {}) or {}
+    backend = (log_cfg.get('backend') or 'none').lower()
+    assert backend in {'wandb', 'tensorboard', 'none'}, f"logging.backend must be one of ['wandb','tensorboard','none'], got {backend}"
 
+    # accelerate will manage the chosen tracker(s)
     accelerator = Accelerator(
         gradient_accumulation_steps=config.training.gradient_accumulation_steps,
         mixed_precision=config.training.mixed_precision,
-        log_with=None,
-        project_dir=config.experiment.logging_dir,
+        log_with=None if backend == 'none' else backend,
+        project_dir=str(Path(config.experiment.project) / "logs"),
         split_batches=True,
     )
 
-    # Log tensorboard info after Accelerator is initialized
-    if use_tensorboard and log_dir:
-        logger.info(f"TensorBoard logging to {log_dir}")
+    # init trackers (wandb/tensorboard). Config会被记录到后端
+    # 这里把 OmegaConf 展平，方便在 UI 里查看
+    flat_cfg = OmegaConf.to_container(config, resolve=True)
 
-    logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO,
-    )
-    logger.info(accelerator.state, main_process_only=False)
+    if backend != 'none':
+        accelerator.init_trackers(
+            project_name=config.experiment.project,  # 统一使用这个
+            config=flat_cfg
+        )
+        if backend == 'tensorboard':
+            accelerator.print(f"[Logging] Using TensorBoard. Logs under: {accelerator.project_dir}")
+        else:
+            accelerator.print(f"[Logging] Using Weights & Biases project: {config.experiment.project}")
+    else:
+        accelerator.print("[Logging] No online/offline logging backend (none)")
+        logging.basicConfig(
+            format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+            datefmt="%m/%d/%Y %H:%M:%S",
+            level=logging.INFO,
+        )
+        logger.info(accelerator.state, main_process_only=False)
+
     if accelerator.is_local_main_process:
         set_verbosity_info()
     else:
@@ -175,19 +186,13 @@ def main():
             torch_dtype=torch.bfloat16
         )
 
-        from torch import nn
-        # Explicitly initialize latent_step_embedding since it's not in pretrained weights
-        if hasattr(model.model, 'latent_step_embedding'):
-            logger.info("Initializing latent_step_embedding...")
-            nn.init.normal_(model.model.latent_step_embedding.weight, mean=0.0, std=0.02)
-            # Convert to bfloat16 to match model dtype
-            model.model.latent_step_embedding.weight.data = model.model.latent_step_embedding.weight.data.to(torch.bfloat16)
-            logger.info(f"latent_step_embedding initialized: shape={model.model.latent_step_embedding.weight.shape}, dtype={model.model.latent_step_embedding.weight.dtype}")
-
         logger.info(f"Enabled latent recursive with max_steps={R}")
     else:
         logger.info("Loading LLaDAModelLM (original)")
         model = LLaDAModelLM.from_pretrained(pretrained_model, torch_dtype=torch.bfloat16)
+
+    ## init Low_level, High_level
+    model.model.low_level_end_idx = config.training.low_level_end_idx
 
     model = model.to(accelerator.device)
 
@@ -200,38 +205,6 @@ def main():
             model.enable_input_require_grads()
         logger.info("Gradient checkpointing enabled")
 
-    # Freeze first half of layers if configured
-    freeze_first_half = config.training.get('freeze_first_half_layers', False)
-    if freeze_first_half:
-        logger.info("Freezing first half of transformer layers...")
-
-        # Get the blocks
-        if hasattr(model.model.transformer, 'blocks'):
-            blocks = model.model.transformer.blocks
-        elif hasattr(model.model.transformer, 'block_groups'):
-            blocks = model.model.transformer.block_groups
-        else:
-            raise ValueError("Cannot find transformer blocks in model")
-
-        n_layers = len(blocks)
-        freeze_until = n_layers // 2
-
-        logger.info(f"Total layers: {n_layers}, Freezing layers 0-{freeze_until-1}, Training layers {freeze_until}-{n_layers-1}")
-
-        # Freeze first half
-        for i in range(freeze_until):
-            for param in blocks[i].parameters():
-                param.requires_grad = False
-
-        # Set freeze configuration in model for forward_latent_only
-        model.model.freeze_first_half_layers = True
-        model.model.trainable_layer_start_idx = freeze_until
-        logger.info(f"Set model.freeze_first_half_layers=True, trainable_layer_start_idx={freeze_until}")
-
-        # Count trainable parameters
-        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        total_params = sum(p.numel() for p in model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100*trainable_params/total_params:.2f}%)")
 
     # GPU Memory Check after model loading
     if torch.cuda.is_available():
@@ -421,9 +394,16 @@ def main():
         }
 
     from tqdm import tqdm
-    with open("./data/" + config.dataset.optimization_data + ".json", 'r') as f:
-        print(f"Dataset Name: {config.dataset.optimization_data}")
-        dataset_load = json.load(f)
+
+    dataset_name = config.dataset.train_data
+    if dataset_name == 'gsm8k_aug_nl':
+        logger.info("Preprocessing data....")
+        dataset_load = sft_preprocess_gsm8k_aug_nl(split='train', model='llada', max_size=16 if config.debug else None)
+    else:
+        with open(f"./data/sft_{config.dataset.optimization_data}_llada.json", 'r') as f:
+            print(f"Dataset Name: {config.dataset.optimization_data}")
+            dataset_load = json.load(f)
+
     # dataset_load = dataset_load[:24]
     prompt_list = []
     response_list = []
@@ -540,7 +520,7 @@ def main():
     if use_latent_recursive and recursive_in_training:
         logger.info(f"  Latent Recursive Training: R={R} (latent thinking steps)")
 
-    def forward_process(input_ids, labels, p_mask_lm):
+    def forward_process(input_ids, labels, p_mask_lm, H_cycles, L_cycles):
         """
         Forward process with optional latent recursive.
         Training uses R steps of latent thinking, then computes loss directly.
@@ -553,75 +533,8 @@ def main():
             # Unwrap model from DDP
             unwrapped_model = accelerator.unwrap_model(model)
 
-            # 1. Get initial hidden states
-            hidden_states = unwrapped_model.model.transformer.wte(input_ids)
-
-            # NaN check for embeddings
-            if torch.isnan(hidden_states).any():
-                logger.error(f"NaN detected in initial embeddings!")
-                raise ValueError("NaN in embeddings")
-
-            # Check latent_step_embedding weights before starting
-            if hasattr(unwrapped_model.model, 'latent_step_embedding'):
-                step_emb_weight = unwrapped_model.model.latent_step_embedding.weight
-                if torch.isnan(step_emb_weight).any():
-                    logger.error(f"NaN in latent_step_embedding weights!")
-                    logger.error(f"Weight shape: {step_emb_weight.shape}")
-                    logger.error(f"Weight stats: min={step_emb_weight.min()}, max={step_emb_weight.max()}")
-                    raise ValueError("latent_step_embedding has NaN weights")
-                if torch.isinf(step_emb_weight).any():
-                    logger.error(f"Inf in latent_step_embedding weights!")
-                    raise ValueError("latent_step_embedding has Inf weights")
-
-            # 2. Get attention bias
-            batch_size, seq_len = input_ids.shape
-            attention_bias = None
-
-            # 3. Latent recursive phase: R steps of latent thinking
-            # Only keep gradient for the last step since loss is computed on final hidden_states
-            for step in range(R):
-                # if step < R - 2:
-                #     # Intermediate steps: no gradient tracking
-                #     with torch.no_grad():
-                #         hidden_states = unwrapped_model.model.forward_latent_only(
-                #             hidden_states=hidden_states.detach(),
-                #             latent_step=step,
-                #             attention_bias=attention_bias,
-                #         )
-                #     # NaN check
-                #     # if torch.isnan(hidden_states).any():
-                #     #     logger.error(f"NaN detected at latent step {step}")
-                #     #     logger.error(f"Hidden states stats - min: {hidden_states.min()}, max: {hidden_states.max()}, mean: {hidden_states.mean()}")
-                #     #     raise ValueError(f"NaN at latent step {step}")
-                #     # Clamp to prevent extreme values
-                #     # hidden_states = torch.clamp(hidden_states, min=-1e4, max=1e4)
-                # else:
-                    # Last step: keep gradient for backprop
-                # hidden_states = hidden_states.detach().requires_grad_(True)
-                hidden_states = unwrapped_model.model.forward_latent_only(
-                    hidden_states=hidden_states,
-                    latent_step=step,
-                    attention_bias=attention_bias,
-                )
-
-                # # NaN check for final step
-                # if torch.isnan(hidden_states).any():
-                #     logger.error(f"NaN detected at final latent step {step}")
-                #     raise ValueError(f"NaN at final latent step")
-
-            # 4. Final forward to get logits (no N-step unmask simulation needed)
-            if unwrapped_model.config.weight_tying:
-                logits = F.linear(hidden_states, unwrapped_model.model.transformer.wte.weight, None)
-            else:
-                logits = unwrapped_model.model.transformer.ff_out(hidden_states)
-
-            if hasattr(unwrapped_model.config, 'scale_logits') and unwrapped_model.config.scale_logits:
-                logits = logits * (1 / math.sqrt(unwrapped_model.config.d_model))
-
-            # NaN check for logits
-            if torch.isnan(logits).any():
-                logger.error(f"NaN detected in logits!")
-                raise ValueError("NaN in logits")
+            carry, logits = unwrapped_model.forward_recursive_reasoning(input_ids=input_ids, 
+                                                                H_cycles=H_cycles, L_cycles=L_cycles)
 
         B, T, V = logits.shape
 
@@ -712,16 +625,16 @@ def main():
                 masked_text = tokenizer.decode(sample_input_ids, skip_special_tokens=True)
                 original_text = tokenizer.decode(original_ids, skip_special_tokens=True)
 
-                logger.info(f"\n[Masked Input (what model sees)]:\n{masked_text[:400]}...")
-                logger.info(f"\n[Original Text (ground truth)]:\n{original_text[:400]}...")
+                logger.info(f"\n[Masked Input (what model sees)]:\n{masked_text}")
+                logger.info(f"\n[Original Text (ground truth)]:\n{original_text}")
 
                 # Try to get original prompt/response from dataset
                 global_step_approx = (epoch * len(train_dataloader_lm) + step - 1) * batch_size
                 if global_step_approx < len(dataset_lm):
                     prompt, response = dataset_lm.get_original_text(global_step_approx)
                     if prompt is not None:
-                        logger.info(f"\n[Dataset Prompt]:\n{prompt[:300]}...")
-                        logger.info(f"\n[Dataset Response]:\n{response[:300]}...")
+                        logger.info(f"\n[Dataset Prompt]:\n{prompt}")
+                        logger.info(f"\n[Dataset Response]:\n{response}")
 
                 logger.info(f"{'='*80}\n")
 
@@ -735,7 +648,9 @@ def main():
             loss_lm = forward_process(
                     input_ids=input_ids,
                     labels=labels,
-                    p_mask_lm=p_mask_lm
+                    p_mask_lm=p_mask_lm,
+                    H_cycles=R,
+                    L_cycles=R
                 )
             loss_lm = loss_lm / accelerator.gradient_accumulation_steps
 
@@ -766,12 +681,21 @@ def main():
                 lr_scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
-                # TensorBoard logging
-                if writer is not None and global_step % log_interval == 0:
-                    writer.add_scalar('train/loss', loss_lm.item() * accelerator.gradient_accumulation_steps, global_step)
-                    writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
+                if backend != 'none' and global_step % log_interval == 0:
+                    metrics = {
+                        'train/loss': loss_lm.item() * accelerator.gradient_accumulation_steps,
+                        'train/lr': optimizer.param_groups[0]['lr'],
+                    }
                     if use_latent_recursive and recursive_in_training:
-                        writer.add_scalar('train/R', R, global_step)
+                        metrics['train/R'] = R
+                    accelerator.log(metrics, step=global_step)
+
+                # # TensorBoard logging
+                # if writer is not None and global_step % log_interval == 0:
+                #     writer.add_scalar('train/loss', loss_lm.item() * accelerator.gradient_accumulation_steps, global_step)
+                #     writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], global_step)
+                #     if use_latent_recursive and recursive_in_training:
+                #         writer.add_scalar('train/R', R, global_step)
 
                 global_step += 1
 
@@ -789,10 +713,6 @@ def main():
 
     # save checkpoint at the end of training
     save_checkpoint(model, tokenizer, config, accelerator, config.model.optimized_name)
-
-    # Close tensorboard writer
-    if writer is not None:
-        writer.close()
 
     accelerator.end_training()
 

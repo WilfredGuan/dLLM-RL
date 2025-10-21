@@ -18,7 +18,7 @@ from typing import (
     Tuple,
 cast,
 )
-from dataclasses import fields
+from dataclasses import fields, dataclass
 from typing import List, Optional, Tuple, Union
 
 import torch
@@ -68,6 +68,13 @@ __all__ = [
 
 
 log = logging.getLogger(__name__)
+
+
+@dataclass
+class InnerCarry:
+    z_H: torch.Tensor
+    z_L: torch.Tensor
+
 
 
 class ModuleType(StrEnum):
@@ -1027,10 +1034,7 @@ class LLaDAModel(nn.Module):
         super().__init__()
         self.config = config
         self.__cache = BufferCache()
-        
-        # Store freeze configuration for latent recursive
-        self.freeze_first_half_layers = False
-        self.trainable_layer_start_idx = 0
+    
 
         # Validate config.
         if self.config.alibi and self.config.flash_attention:
@@ -1081,13 +1085,6 @@ class LLaDAModel(nn.Module):
         else:
             self.transformer.update({"blocks": nn.ModuleList(blocks)})
 
-        # Latent recursive step embedding
-        if config.use_latent_recursive:
-            self.latent_step_embedding = nn.Embedding(
-                config.max_latent_recursive_steps,
-                config.d_model,
-                device=config.init_device
-            )
 
         if not (self.config.alibi or self.config.rope):
             self.transformer.update(
@@ -1143,9 +1140,6 @@ class LLaDAModel(nn.Module):
         if hasattr(self.transformer, "wpe"):
             init_weights(self.config, self.transformer.wpe, type_of_module=ModuleType.emb)  # type: ignore
         
-        # Latent step embedding
-        if self.config.use_latent_recursive and hasattr(self, "latent_step_embedding"):
-            nn.init.normal_(self.latent_step_embedding.weight, mean=0.0, std=0.02)
 
         # Top-level layer norm.
         self.transformer.ln_f.reset_parameters()  # type: ignore
@@ -1174,6 +1168,38 @@ class LLaDAModel(nn.Module):
             alibi_bias = alibi_attention_bias(seq_len, self.config, device)
         self.__cache["alibi_attention_bias"] = alibi_bias
         return alibi_bias
+
+    def _input_embedding(self, input_ids: torch.LongTensor):
+
+
+        batch_size, seq_len = input_ids.size()
+        past_length = 0
+        
+        # Get embeddings of input.
+        # shape: (batch_size, seq_len, d_model)
+        # print(f"input_ids: {input_ids}, input_ids.shape: {input_ids.shape}")
+        # print(f"transformer wte weight shape: {self.transformer.wte.weight.shape}")
+        x = self.transformer.wte(input_ids)
+
+        # print(f"xshape: {x.shape}")
+
+        if self.config.input_emb_norm:
+            x = x * (self.config.d_model**0.5)
+
+        if not (self.config.alibi or self.config.rope):
+            # Get positional embeddings.
+            # shape: (1, seq_len)
+            pos = torch.arange(past_length, past_length + seq_len, dtype=torch.long, device=x.device).unsqueeze(0)
+            # shape: (1, seq_len, d_model)
+            pos_emb = self.transformer.wpe(pos)  # type: ignore
+            x = pos_emb + x
+        
+        # Add input + positional embeddings and apply dropout.
+        # shape: (batch_size, seq_len, d_model)
+        x = self.transformer.emb_drop(x)  # type: ignore
+
+        return x
+
 
     def forward(
         self,
@@ -1383,21 +1409,22 @@ class LLaDAModel(nn.Module):
 
         return LLaDAOutput(logits=logits, attn_key_values=attn_key_values, hidden_states=tuple(all_hidden_states) if output_hidden_states else None)  # type: ignore[arg-type]
 
-    def forward_latent_only(
+    def forward_latent_recursive(
         self,
         hidden_states: torch.Tensor,
-        latent_step: int,
+        input_injection: torch.Tensor,
+        block_start_idx: int,
+        block_end_idx: int,
         attention_bias: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Forward pass in hidden space only, without projecting to vocab.
         Used for latent recursive processing.
         
-        When freeze_first_half_layers is enabled, only forward through unfrozen layers.
         
         Args:
             hidden_states: (batch_size, seq_len, d_model)
-            latent_step: Current latent recursive step (0-indexed)
+            latent_step: inner latent recursive step 
             attention_bias: Attention bias tensor
         
         Returns:
@@ -1405,42 +1432,15 @@ class LLaDAModel(nn.Module):
         """
         if not self.config.use_latent_recursive:
             raise ValueError("Latent recursive is not enabled in config")
-        
-        # Add latent step embedding to all positions
-        step_emb = self.latent_step_embedding(
-            torch.tensor([latent_step], device=hidden_states.device, dtype=torch.long)
-        )  # (1, d_model)
-        
-        # Check for NaN in step embedding
-        if torch.isnan(step_emb).any():
-            raise ValueError(f"NaN in step_emb at latent_step={latent_step}")
-        
-        step_emb = step_emb.unsqueeze(1)  # (1, 1, d_model)
-        
-        # Ensure dtype matches
-        if step_emb.dtype != hidden_states.dtype:
-            step_emb = step_emb.to(hidden_states.dtype)
-        
-        hidden_states = hidden_states + step_emb  # broadcast
-        
-        # Check for NaN after adding step embedding
-        if torch.isnan(hidden_states).any():
-            raise ValueError(f"NaN after adding step_emb at latent_step={latent_step}")
-        
-        # Apply dropout
-        hidden_states = self.transformer.emb_drop(hidden_states)
-        
-        # Check for NaN after dropout
-        if torch.isnan(hidden_states).any():
-            raise ValueError(f"NaN after dropout at latent_step={latent_step}")
-        
+
+        hidden_states = hidden_states + input_injection
+
         # Apply blocks (only unfrozen layers if freeze is enabled)
         if self.config.block_group_size == 1:
             # Determine which blocks to use
             blocks = self.transformer.blocks
-            start_idx = self.trainable_layer_start_idx if self.freeze_first_half_layers else 0
-            
-            for i in range(start_idx, len(blocks)):
+        
+            for i in range(block_start_idx, block_end_idx):  # block
                 block = blocks[i]
                 hidden_states, _ = block(
                     hidden_states,
@@ -1448,21 +1448,12 @@ class LLaDAModel(nn.Module):
                     layer_past=None,
                     use_cache=False
                 )
-                # Check for NaN after each block
-                if torch.isnan(hidden_states).any():
-                    raise ValueError(f"NaN after block {i} at latent_step={latent_step}")
+
         else:
             # For block groups
             block_groups = self.transformer.block_groups
-            # Calculate which block group to start from
-            if self.freeze_first_half_layers:
-                # trainable_layer_start_idx is in terms of individual layers
-                # Convert to block group index
-                start_group_idx = self.trainable_layer_start_idx // self.config.block_group_size
-            else:
-                start_group_idx = 0
-            
-            for i in range(start_group_idx, len(block_groups)):
+
+            for i in range(block_start_idx, block_end_idx):
                 block_group = block_groups[i]
                 hidden_states, _ = block_group(
                     hidden_states,
@@ -1470,16 +1461,11 @@ class LLaDAModel(nn.Module):
                     layers_past=None,
                     use_cache=False
                 )
-                # Check for NaN after each block group
-                if torch.isnan(hidden_states).any():
-                    raise ValueError(f"NaN after block_group {i} at latent_step={latent_step}")
-        
-        # Apply final layer norm
-        hidden_states = self.transformer.ln_f(hidden_states)
+
         
         # Check for NaN after final layer norm
         if torch.isnan(hidden_states).any():
-            raise ValueError(f"NaN after final layer norm at latent_step={latent_step}")
+            raise ValueError(f"NaN after final layer norm at forward_latent_recursive")
         
         return hidden_states
 
@@ -1495,6 +1481,36 @@ def create_model_config_from_pretrained_config(config: LLaDAConfig):
 
     model_config = ModelConfig(**kwargs)
     return model_config
+
+
+
+def trunc_normal_init_(tensor: torch.Tensor, std: float = 1.0, lower: float = -2.0, upper: float = 2.0):
+    # NOTE: PyTorch nn.init.trunc_normal_ is not mathematically correct, the std dev is not actually the std dev of initialized tensor
+    # This function is a PyTorch version of jax truncated normal init (default init method in flax)
+    # https://github.com/jax-ml/jax/blob/main/jax/_src/random.py#L807-L848
+    # https://github.com/jax-ml/jax/blob/main/jax/_src/nn/initializers.py#L162-L199
+
+    with torch.no_grad():
+        if std == 0:
+            tensor.zero_()
+        else:
+            sqrt2 = math.sqrt(2)
+            a = math.erf(lower / sqrt2)
+            b = math.erf(upper / sqrt2)
+            z = (b - a) / 2
+
+            c = (2 * math.pi) ** -0.5
+            pdf_u = c * math.exp(-0.5 * lower ** 2)
+            pdf_l = c * math.exp(-0.5 * upper ** 2)
+            comp_std = std / math.sqrt(1 - (upper * pdf_u - lower * pdf_l) / z - ((pdf_u - pdf_l) / z) ** 2)
+
+            tensor.uniform_(a, b)
+            tensor.erfinv_()
+            tensor.mul_(sqrt2 * comp_std)
+            tensor.clip_(lower * comp_std, upper * comp_std)
+
+    return tensor
+
 
 
 class LLaDAModelLM(PreTrainedModel):
@@ -1516,6 +1532,9 @@ class LLaDAModelLM(PreTrainedModel):
             self.model = LLaDAModel(model_config, init_params=init_params)
         else:
             self.model = model
+
+        # Store freeze configuration for latent recursive
+        self.low_level_end_idx = 6
 
     def forward(
         self,
@@ -1566,6 +1585,117 @@ class LLaDAModelLM(PreTrainedModel):
             past_key_values=outputs.attn_key_values,
             hidden_states=hidden_states,
         )
+
+
+    def forward_recursive_reasoning(
+        self,
+        input_ids: torch.LongTensor = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        attention_bias: Optional[torch.Tensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        labels: Optional[torch.LongTensor] = None,
+        H_cycles: int = None,
+        L_cycles: int = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        cache_position: Optional[Cache] = None,  # This is a hack mitigation of an issue in transformers `4.39.x`
+    ) -> Union[Tuple, CausalLMOutputWithPast]:
+        if use_cache is None:
+            use_cache = self.config.use_cache
+
+        if output_attentions:
+            raise ValueError("output_attentions is not yet supported in LLaDA")
+
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        # 1. Get initial hidden states
+        hidden_states = self.model._input_embedding(input_ids)
+
+        # NaN check for embeddings
+        if torch.isnan(hidden_states).any():
+            logger.error(f"NaN detected in initial embeddings!")
+            raise ValueError("NaN in embeddings")
+
+        # 2. Get attention bias
+        attention_bias = None
+
+        # 3. Latent recursive phase: R steps of latent thinking
+        # Only keep gradient for the last step since loss is computed on final hidden_states
+        device = hidden_states.device  # 拿到当前 hidden_states 的设备
+        carry = InnerCarry(
+            z_H= nn.Buffer(trunc_normal_init_(torch.empty_like(hidden_states), std=1), persistent=True),
+            z_L = nn.Buffer(trunc_normal_init_(torch.empty_like(hidden_states), std=1), persistent=True)
+        )
+        if hasattr(self.model.transformer, 'blocks'):
+            length_of_blocks = len(self.model.transformer.blocks)
+        elif hasattr(self.model.transformer, 'block_groups'):
+            length_of_blocks = len(self.model.transformer.block_groups)
+        else:
+            raise ValueError("Cannot find transformer blocks in model")
+        z_H, z_L = carry.z_H, carry.z_L
+        with torch.no_grad():
+            for _H_step in range(H_cycles-1):
+                for _L_step in range(L_cycles):
+                    z_L = self.model.forward_latent_recursive(
+                            hidden_states=z_L,
+                            input_injection=z_H + hidden_states,
+                            block_start_idx=0,
+                            block_end_idx=self.low_level_end_idx,
+                            attention_bias=attention_bias,
+                        )
+                z_H = self.model.forward_latent_recursive(
+                        hidden_states=z_H,
+                        input_injection=z_L,
+                        block_start_idx=self.low_level_end_idx,
+                        block_end_idx=length_of_blocks,
+                        attention_bias=attention_bias,
+                    )
+                z_H = self.model.transformer.ln_f(z_H)
+
+        for _L_step in range(L_cycles):
+                z_L = self.model.forward_latent_recursive(
+                        hidden_states=z_L,
+                        input_injection=z_H + hidden_states,
+                        block_start_idx=0,
+                        block_end_idx=self.low_level_end_idx,
+                        attention_bias=attention_bias,
+                    )
+        z_H = self.model.forward_latent_recursive(
+                hidden_states=z_H,
+                input_injection=z_L,
+                block_start_idx=self.low_level_end_idx,
+                block_end_idx=length_of_blocks,
+                attention_bias=attention_bias,
+            )
+        z_H = self.model.transformer.ln_f(z_H)
+
+        # NaN check for final step
+        if torch.isnan(hidden_states).any():
+            logger.error(f"NaN detected at final outerloop")
+            raise ValueError(f"NaN at final latent step")
+
+
+        # 4. Final forward to get logits (no N-step unmask simulation needed)
+        if self.config.weight_tying:
+            logits = F.linear(z_H, self.model.transformer.wte.weight, None)
+        else:
+            logits = self.model.transformer.ff_out(z_H)
+
+        if hasattr(self.config, 'scale_logits') and self.config.scale_logits:
+            logits = logits * (1 / math.sqrt(self.config.d_model))
+
+        # NaN check for logits
+        if torch.isnan(logits).any():
+            logger.error(f"NaN detected in logits!")
+            raise ValueError("NaN in logits")
+
+        new_carry = InnerCarry(z_H=hidden_states.detach(), z_L=z_L.detach())
+
+        return new_carry, logits
+
 
     def can_generate(self) -> bool:
         return True
