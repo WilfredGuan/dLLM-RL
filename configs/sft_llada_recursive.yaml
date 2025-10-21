@@ -15,7 +15,7 @@ dataset:
 training:
     gradient_checkpointing_enable: False  # Enable to save memory
     gradient_accumulation_steps: 4  # Increase to maintain effective batch size
-    batch_size_lm: 32  # Reduce to 1 to save memory
+    batch_size_lm: 16  # Reduce to 1 to save memory
     mixed_precision: "bf16"
     enable_tf32: False
     seed: 42
