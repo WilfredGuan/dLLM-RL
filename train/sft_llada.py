@@ -500,6 +500,87 @@ def main():
         total = torch.cuda.get_device_properties(0).total_memory / 1024**3
         logger.info(f"[After Accelerator Prepare] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
+    ##################################
+    #   Resume from checkpoint      #
+    ##################################
+    first_epoch = 0
+    global_step = 0
+    resume_from_checkpoint = config.get('checkpoint', {}).get('resume_from_checkpoint', None)
+    
+    if resume_from_checkpoint is not None:
+        logger.info(f"***** Resuming from checkpoint: {resume_from_checkpoint} *****")
+        checkpoint_path = Path(resume_from_checkpoint)
+        
+        # Check if this is a training checkpoint (has accelerator state) or final checkpoint (model only)
+        # Training checkpoints: checkpoint-{step}/ with optimizer.bin, scheduler.bin, etc.
+        # Final checkpoints: ckpt/ with model in subdirectory (e.g., optimized_recursive/)
+        is_training_checkpoint = (checkpoint_path / "optimizer.bin").exists() or \
+                                (checkpoint_path / "optimizer_0" / "optimizer.bin").exists()
+        
+        if is_training_checkpoint:
+            # Load complete training state (model, optimizer, lr_scheduler, RNG states, etc.)
+            logger.info("  Loading training checkpoint with full state...")
+            accelerator.load_state(resume_from_checkpoint)
+            
+            # Load metadata to get global_step and epoch info
+            metadata_path = checkpoint_path / "metadata.json"
+            if metadata_path.exists():
+                with metadata_path.open("r") as f:
+                    metadata = json.load(f)
+                    global_step = metadata.get("global_step", 0)
+                    logger.info(f"  Resumed from global_step: {global_step}")
+                    logger.info(f"  Checkpoint saved at: {metadata.get('save_time', 'unknown')}")
+            else:
+                logger.warning(f"  metadata.json not found, starting from step 0")
+            
+            # Calculate which epoch we're in based on global_step
+            steps_per_epoch = math.ceil(len(dataset_lm) / total_batch_size_lm)
+            first_epoch = global_step // steps_per_epoch
+            logger.info(f"  Successfully resumed training from step {global_step}, epoch {first_epoch}")
+        else:
+            # This is a final checkpoint with only model weights
+            logger.info("  Loading final checkpoint (model weights only)...")
+            
+            # Find model directory (e.g., optimized_recursive/)
+            model_dirs = [d for d in checkpoint_path.iterdir() if d.is_dir() and d.name != "tensorboard_logs"]
+            if not model_dirs:
+                raise ValueError(f"No model directory found in {checkpoint_path}")
+            
+            model_dir = model_dirs[0]
+            logger.info(f"  Loading model from {model_dir}")
+            
+            # Load model state dict from safetensors
+            from safetensors.torch import load_file
+            import glob
+            
+            safetensor_files = sorted(glob.glob(str(model_dir / "model-*.safetensors")))
+            if safetensor_files:
+                # Load sharded model
+                state_dict = {}
+                for shard_file in safetensor_files:
+                    shard_state = load_file(shard_file)
+                    state_dict.update(shard_state)
+                
+                # Load into model
+                unwrapped_model = accelerator.unwrap_model(model)
+                missing_keys, unexpected_keys = unwrapped_model.load_state_dict(state_dict, strict=False)
+                
+                if missing_keys:
+                    logger.warning(f"  Missing keys: {missing_keys[:5]}...")  # Show first 5
+                if unexpected_keys:
+                    logger.warning(f"  Unexpected keys: {unexpected_keys[:5]}...")
+                
+                logger.info(f"  Successfully loaded model weights from {model_dir}")
+                logger.info("  Note: Optimizer/scheduler states NOT restored (starting fresh)")
+            else:
+                raise ValueError(f"No safetensors files found in {model_dir}")
+        
+        logger.info(f"  Resuming from epoch: {first_epoch}")
+        logger.info(f"  Total steps completed: {global_step}")
+        logger.info(f"  Remaining steps: {max_train_steps - global_step}")
+        
+        accelerator.wait_for_everyone()
+
     # Access the underlying model when wrapped in DDP
     unwrapped_model = accelerator.unwrap_model(model)
     mask_dtype = unwrapped_model.get_input_embeddings().weight.dtype
@@ -517,7 +598,6 @@ def main():
     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size_lm}")
     logger.info(f"  Gradient Accumulation steps = {config.training.gradient_accumulation_steps}")
 
-    first_epoch = 0
     data_time_m = AverageMeter()
     end = time.time()
 
@@ -669,7 +749,7 @@ def main():
 
     from tqdm.auto import tqdm
 
-    global_step = 0
+    # global_step already initialized in resume checkpoint section
     log_interval = config.get('logging', {}).get('log_interval', 10)
     save_checkpoint_steps = config.get('checkpoint', {}).get('save_checkpoint_steps', None)
     

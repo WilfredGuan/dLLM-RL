@@ -25,20 +25,20 @@ training:
     lower_p: 0.1
     upper_p: 0.9
     block_size: 32
-    mask_times_per_sample: 1
+    mask_times_per_sample: 2
     post_num: 0
     max_gen_length: 1024
     max_prompt_len: 784
     
     # Latent Recursive parameters
     use_latent_recursive: True
-    R: 2 # latent recursive steps (before every unmask steps)
+    R: 1 # latent recursive steps (before every unmask steps)
     recursive_in_training: True
 
 optimizer:
     name: adamw
     params:
-        learning_rate: 1e-5
+        learning_rate: 2e-5
         scale_lr: False
         beta1: 0.9
         beta2: 0.999
@@ -55,6 +55,7 @@ lr_scheduler:
 # Checkpoint configuration
 checkpoint:
     save_checkpoint_steps: 5000  # Save checkpoint every N steps (set to null to disable)
+    resume_from_checkpoint: sft_llada_recursive_2_epoch/ckpt/  # Path to checkpoint directory to resume training (e.g., "sft_llada_recursive/ckpt/checkpoint-5000")
 
 # Logging configuration
 logging:

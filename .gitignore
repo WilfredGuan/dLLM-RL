@@ -3,3 +3,4 @@
 /sft_llada_recursive/
 *.json
 out_log.txt
+sft_llada_recursive_2_epoch/

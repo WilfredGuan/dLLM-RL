@@ -34,7 +34,7 @@ rollout:
     # Core logic: Each cycle executes [R latent thinking steps + N normal forward steps]
     # Each normal forward step unmasks unmask_token_number_per_step tokens
     
-    R: 2                              # Number of latent thinking steps per cycle
+    R: 1                              # Number of latent thinking steps per cycle
     N: 1                              # Number of normal forward steps per cycle
     unmask_token_number_per_step: 1   # Number of tokens to unmask per forward step
     block_size: 32                    # Total tokens processed per block
