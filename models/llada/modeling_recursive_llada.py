@@ -1375,7 +1375,7 @@ class LLaDAModel(nn.Module):
 
                 layers_past = (
                     None
-                    if past_key_values is None
+                    if past_key_values is Nonefz
                     else past_key_values[
                         group_idx * self.config.block_group_size : (group_idx + 1) * self.config.block_group_size
                     ]

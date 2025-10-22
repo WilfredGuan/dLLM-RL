@@ -690,11 +690,6 @@ def main():
                         metrics['train/R'] = R
                     accelerator.log(metrics, step=global_step)
 
-                # Save checkpoint at the end of each epoch with epoch and global_step in the filename
-                if (step + 1) % len(train_dataloader_lm) == 0:  # End of the epoch
-                    checkpoint_name = f"checkpoint-epoch{epoch+1}-step{global_step}.pth"
-                    save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name)
-
 
                 global_step += 1
 
@@ -707,6 +702,10 @@ def main():
                     reserved = torch.cuda.memory_reserved() / 1024**3
                     total = torch.cuda.get_device_properties(0).total_memory / 1024**3
                     logger.info(f"[Global Step {global_step} After Cleanup] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
+
+        # Save checkpoint at the end of each epoch with epoch and global_step in the filename
+        checkpoint_name = f"checkpoint-epoch{epoch+1}-step{global_step}.pth"
+        save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name)
 
     accelerator.wait_for_everyone()
 

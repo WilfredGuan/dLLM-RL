@@ -50,37 +50,31 @@ class DiffusionOutput:
     nfe:       int
 
 
+
 @torch.no_grad()
 def generate_with_prefix_cache(
         model, prompt,
-        gen_length, block_length, R, N, unmask_token_number_per_step, temperature,
-        target, mask_id, further_horizon, use_cache, unmask_threshold, latent_recursive_steps=0, rank=None, output_unmasking_history=True
+        gen_length, block_length, latent_recursive_steps, unmask_token_number_per_step, temperature, 
+        target, mask_id, further_horizon, use_cache, unmask_threshold, rank
     ) -> DiffusionOutput:
 
-    # Setup logger
-    logger = logging.getLogger(f"GPU-{rank}")
-    logger.setLevel(logging.DEBUG)
-    if not logger.handlers:
-        handler = logging.FileHandler(f"/geminicephfs/game-center-recmd/wilfredguan/dLLM-RL/debug_gpu_{rank}.log")
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        logger.addHandler(handler)
-    
-    logger.info(f"=== Starting generate_with_prefix_cache ===")
-    logger.info(f"use_cache={use_cache}, R={R}, N={N}, latent_recursive_steps={latent_recursive_steps}")
 
     # Parameter validation
     assert gen_length % block_length == 0, f"gen_length ({gen_length}) must be divisible by block_length ({block_length})"
-    assert block_length % (N * unmask_token_number_per_step) == 0, \
-        f"block_length ({block_length}) must be divisible by (N * unmask_token_number_per_step) = ({N} * {unmask_token_number_per_step}) = {N * unmask_token_number_per_step}"
+    assert block_length % (unmask_token_number_per_step) == 0, \
+        f"block_length ({block_length}) must be divisible by (unmask_token_number_per_step) = {unmask_token_number_per_step} = {unmask_token_number_per_step}"
     
+
     cgws = further_horizon
     B, L0 = prompt.shape
     x = torch.full((B, L0 + gen_length), mask_id, dtype=torch.long, device=prompt.device)
     max_length = L0 + gen_length
     x[:, :L0] = prompt
-    
+    assert gen_length % block_length == 0
     num_blocks = gen_length // block_length
-    cycles_per_block = block_length // (N * unmask_token_number_per_step)
+    # base, rem = divmod(steps, num_blocks)
+    # steps_per_block = [base + (i < rem) for i in range(num_blocks)]
+                
 
     nfe = 0
     hist: List[torch.Tensor] = []
@@ -88,137 +82,76 @@ def generate_with_prefix_cache(
     for blk in range(num_blocks):
         s, e = L0 + blk * block_length, L0 + (blk + 1) * block_length
 
-        logger.info(f"[Block {blk+1}/{num_blocks}] Processing tokens {s}-{e}")
-
         if cgws is not None:
             window_end  = max_length if cgws is None else min(e + cgws, max_length)
             window_slice = slice(s, window_end)
         
+        # cur_steps = steps_per_block[blk]
+        # num_transfer = get_num_transfer_tokens((x[:, s:e] == mask_id), cur_steps)
         # Fixed unmask count per step
         num_transfer = torch.full((B, 1), unmask_token_number_per_step, dtype=torch.long, device=x.device)
         
-        # ========== Step 1: Build KV cache and first unmask (following naive version) ==========
-        # First full forward to build prefix cache (only once per block)
+        # first full forward to build prefix cache
         if use_cache:
-            logger.debug(f"[Block {blk}] Before forward: use_cache={use_cache}, x.shape={x.shape}")
-            logger.debug(f"[Block {blk}] Model type: {type(model).__name__}")
-            logger.debug(f"[Block {blk}] Model config use_cache: {model.config.use_cache if hasattr(model, 'config') else 'No config'}")
-            
             out = model(x, use_cache=True)
             pkv = out.past_key_values
-            
-            logger.debug(f"[Block {blk}] After forward: pkv is None? {pkv is None}")
-            logger.debug(f"[Block {blk}] out type: {type(out).__name__}")
-            
-            if pkv is not None:
-                logger.debug(f"[Block {blk}] pkv type: {type(pkv)}, len: {len(pkv)}")
-                if len(pkv) > 0:
-                    logger.debug(f"[Block {blk}] pkv[0] type: {type(pkv[0])}, len: {len(pkv[0])}")
-                    if len(pkv[0]) > 0:
-                        logger.debug(f"[Block {blk}] pkv[0][0].shape: {pkv[0][0].shape}")
-                # Chop prefix out of past_kv to keep cache small
-                new_pkv = tuple(
-                    tuple(t[:, :, :s] for t in layer) for layer in pkv
-                )
-                pkv = new_pkv
-            else:
-                logger.error(f"[Block {blk}] ERROR: pkv is None! This will cause the error.")
-                logger.error(f"[Block {blk}] Model forward returned None for past_key_values")
-                raise RuntimeError(f"Model returned None for past_key_values when use_cache=True")
+            # chop prefix out of past_kv to keep cache small
+            new_pkv = tuple(
+                tuple(t[:, :, :s] for t in layer) for layer in pkv
+            )
+            pkv = new_pkv
         else:
-            out = model(x, use_cache=False)
+            _, logits = model.forward_recursive_reasoning(x, H_cycles=latent_recursive_steps, L_cycles=latent_recursive_steps, use_cache=False)
         
-        # First unmask from initial forward
         mask_all = (x == mask_id)
         mask_all[:, e:] = 0
-        
+
         x0, tr_idx = get_transfer_index(
-            out.logits, temperature, target, mask_all,
+            logits, temperature, target, mask_all,
             x, num_transfer[:, 0], unmask_threshold)
         x[tr_idx] = x0[tr_idx]
-        
-        if output_unmasking_history:
-            hist.append(x.clone().cpu())
-        
-        unmask_count = tr_idx.sum().item()
-        logger.info(f"  [Initial Forward] {unmask_count} tokens unmasked")
-        
+        hist.append(x.clone().cpu())
         nfe += 1
-        
-        # ========== Step 2: [R+N] Cycle Loop ==========
-        cycle_idx = 0
+
+        i = 1
         while True:
-            if (x[:, s:e] == mask_id).sum() == 0:
-                break
-            
-            cycle_idx += 1
-            logger.info(f"  [Cycle {cycle_idx}]")
-            
-            # ========== Phase 1: R steps of latent thinking ==========
-            for lat_step in range(R):
-                logger.debug(f"    [Latent] Step {lat_step+1}/{R}")
-                
-                # Latent thinking forward (no unmasking)
-                if use_cache:
-                    if cgws is not None:
-                        _ = model(x[:, window_slice], past_key_values=pkv, use_cache=True)
-                    else:
-                        _ = model(x[:, s:], past_key_values=pkv, use_cache=True)
-                else:
-                    _ = model(x, use_cache=False)
-                
-                nfe += 1
-            
-            # ========== Phase 2: N steps of normal forward (each unmasks tokens) ==========
-            for n_step in range(N):
-                logger.debug(f"    [Inference] Forward step {n_step+1}/{N}")
-                
-                # Determine mask for current block
+            nfe += 1
+            if cgws is not None:
+                mask_blk = (x[:, window_slice] == mask_id)
+            else:
+                mask_blk = (x[:, s:] == mask_id)
+            mask_blk[:, block_length:] = 0
+
+            if use_cache:
                 if cgws is not None:
-                    mask_blk = (x[:, window_slice] == mask_id)
+                    logits = model(x[:, window_slice], past_key_values=pkv, use_cache=True).logits
+                    x0, tr_idx = get_transfer_index(
+                        logits, temperature, target,
+                        mask_blk, x[:, window_slice], num_transfer[:, 0], unmask_threshold)
+                    x[:, window_slice][tr_idx] = x0[tr_idx]
                 else:
-                    mask_blk = (x[:, s:] == mask_id)
-                mask_blk[:, block_length:] = 0
-                
-                # Perform normal forward pass
-                if use_cache:
-                    if cgws is not None:
-                        logits = model(x[:, window_slice], past_key_values=pkv, use_cache=True).logits
-                        x0, tr_idx = get_transfer_index(
-                            logits, temperature, target,
-                            mask_blk, x[:, window_slice], num_transfer[:, 0], unmask_threshold)
-                        x[:, window_slice][tr_idx] = x0[tr_idx]
-                    else:
-                        logits = model(x[:, s:], past_key_values=pkv, use_cache=True).logits
-                        x0, tr_idx = get_transfer_index(
-                            logits, temperature, target,
-                            mask_blk, x[:, s:], num_transfer[:, 0], unmask_threshold)
-                        x[:, s:][tr_idx] = x0[tr_idx]
-                else:
-                    logits = model(x, use_cache=False).logits
-                    logits = logits[:, s:]
+                    logits = model(x[:, s:], past_key_values=pkv, use_cache=True).logits
                     x0, tr_idx = get_transfer_index(
                         logits, temperature, target,
                         mask_blk, x[:, s:], num_transfer[:, 0], unmask_threshold)
                     x[:, s:][tr_idx] = x0[tr_idx]
-                
-                if output_unmasking_history:
-                    hist.append(x.clone().cpu())
-                
-                unmask_count = tr_idx.sum().item()
-                logger.debug(f"      [Unmask Token Number] {unmask_count} tokens unmasked")
-                
-                nfe += 1
-                
-                # Check if all tokens in current block are unmasked
-                if (x[:, s:e] == mask_id).sum() == 0:
-                    break
+            else:
+                _, logits = model.forward_recursive_reasoning(x, H_cycles=latent_recursive_steps, L_cycles=latent_recursive_steps, use_cache=False)
+                logits = logits[:, s:]
+                x0, tr_idx = get_transfer_index(
+                    logits, temperature, target,
+                    mask_blk, x[:, s:], num_transfer[:, 0], unmask_threshold)
+                x[:, s:][tr_idx] = x0[tr_idx]
             
-            # If all tokens unmasked, exit cycle loop
+            hist.append(x.clone().cpu())
+
             if (x[:, s:e] == mask_id).sum() == 0:
                 break
+            i += 1
 
     return DiffusionOutput(sequences=x, history=hist, nfe=nfe)
+
+
 
 
 def get_transfer_index(logits, temperature, target, mask_index, x, num_transfer_tokens, threshold=None):
@@ -281,6 +214,7 @@ def get_prompt(data_i):
 
 
 def extract_final_boxed_answer(s: str):
+    s = s.split('<|eot_id|>')[0]
     tag = r'\boxed{'
     start = s.rfind(tag)          # last \boxed{
     if start == -1:
@@ -347,6 +281,11 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
                                       torch_dtype=torch.bfloat16)
                      .to(device)
                      .eval())
+        
+        low_level_end_idx = config.model.get('low_level_end_idx', 0)
+        
+        model_gpu.model.low_level_end_idx = low_level_end_idx
+        
     else:
         # Load standard model
         model_gpu = (LLaDAModelLM
@@ -380,22 +319,18 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         else:
             unmask_threshold = config.rollout.dynamic_threshold
 
-        # Get R and N from config
-        R = config.rollout.get('R', 1)
-        N = config.rollout.get('N', 2)
         unmask_token_number_per_step = config.rollout.get('unmask_token_number_per_step', 1)
 
         # generate_with_prefix_cache
         out = generate_with_prefix_cache(
             model_gpu, input_ids,
             gen_length=config.rollout.max_gen_length,
-            block_length=config.rollout.block_size, R=R, N=N, 
+            block_length=config.rollout.block_size, latent_recursive_steps=latent_recursive_steps, 
             unmask_token_number_per_step=unmask_token_number_per_step,
             temperature=config.rollout.temperature,
             target=config.rollout.target, mask_id=mask_id, further_horizon=config.rollout.further_horizon,
             use_cache=config.rollout.use_cache, unmask_threshold=unmask_threshold,
-            latent_recursive_steps=latent_recursive_steps, rank=rank,
-            output_unmasking_history=config.rollout.output_unmasking_history
+            rank=rank
         )
         out.sequences = out.sequences.cpu()
         torch.cuda.empty_cache()
@@ -404,6 +339,8 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         seq_ids = out.sequences[:, input_ids.shape[1]:].tolist()
         texts  = tokenizer_gpu.batch_decode(
             seq_ids, skip_special_tokens=False, clean_up_tokenization_spaces=True)
+
+        print(texts)
 
         # compute and store step maps
         for i, idx in enumerate(batch_idxs):
@@ -445,12 +382,12 @@ if __name__ == "__main__":
     
     project_name = config.experiment.project
     
-    system_prompts = """<|startoftext|><|start_header_id|>user<|end_header_id|>You need to put your final answer in \\boxed{}. This is the problem:\n{{problem}}<|eot_id|><|startoftext|><|start_header_id|>assistant<|end_header_id|>\n"""
+    system_prompts = """<|startoftext|><|start_header_id|>user<|end_header_id|>\nThis is the problem:\n{{problem}}\nYou need to put your final answer in \\boxed{}. <|eot_id|><|startoftext|><|start_header_id|>assistant<|end_header_id|>\n"""
     
     code_eval = False
     
     dataset = config.dataset.eval_dataset
-    pretrained_model = config.model
+    pretrained_model = config.model.model_path
     if config.dataset.data_type == "code":
         code_eval = True
         system_prompts_function = '''<|startoftext|><|start_header_id|>user<|end_header_id|>{{problem}}\nPlace your code within a single Python code block ```python ```. Do not include more than one code block. <|eot_id|><|startoftext|><|start_header_id|>assistant<|end_header_id|>\n'''
@@ -459,12 +396,12 @@ if __name__ == "__main__":
     elif config.dataset.data_type == "option":
         system_prompts = '''<|startoftext|><|start_header_id|>user<|end_header_id|>This is the problem:\n{{problem}}\nYou need to think step by step and put the final option (A, B, C, or D only—no other character) in \\boxed{}. <|eot_id|><|startoftext|><|start_header_id|>assistant<|end_header_id|>\n'''
     
-    outputs_name = "eval-" + pretrained_model.replace("/", ".") + "-" + dataset
+    outputs_name = "eval-" + pretrained_model.split("/")[-3] + "-" + dataset
 
     with open("../data/" + dataset + ".json", 'r') as f:
         data = json.load(f)
     
-    data = [data[i] for i in range(8)]
+    # data = [data[i] for i in range(8)]
     
     num_node = config.experiment.num_node
     node_index = config.experiment.node_index

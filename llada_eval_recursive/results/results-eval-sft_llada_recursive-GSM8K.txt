@@ -1,0 +1,4 @@
+acc: 0.0625
+avg length: 920.75
+acc: 0.1875
+avg length: 1022.25

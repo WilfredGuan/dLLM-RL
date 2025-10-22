@@ -80,7 +80,7 @@ if __name__ == "__main__":
     os.makedirs(f"{project_name}/results", exist_ok=True)
     
     
-    sample(config.model_base)
+    sample(config.model.model_base)
     if eval_type == "code":
         execute()
     

@@ -1,5 +1,5 @@
 experiment:
-    project: "sft_llada_recursive"
+    project: "sft_llada_recursive1"
     num_node: 1
 
 debug: False
@@ -19,7 +19,7 @@ training:
     mixed_precision: "bf16"
     enable_tf32: False
     seed: 42
-    num_train_epochs: 10
+    num_train_epochs: 50
     max_grad_norm: 1
 
     # Masking strategy
@@ -36,7 +36,7 @@ training:
     use_latent_recursive: True
     R: 2 # latent recursive steps (before every unmask steps)
     recursive_in_training: True
-    low_level_end_idx: 6
+    low_level_end_idx: 16
 
 optimizer:
     name: adamw

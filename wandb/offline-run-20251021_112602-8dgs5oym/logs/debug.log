@@ -14,3 +14,9 @@ config: {'experiment': {'project': 'sft_llada_recursive', 'num_node': 1, 'loggin
 2025-10-21 11:26:02,385 INFO    MainThread:174169 [wandb_run.py:_redirect():2411] Wrapping output streams.
 2025-10-21 11:26:02,385 INFO    MainThread:174169 [wandb_run.py:_redirect():2434] Redirects installed.
 2025-10-21 11:26:02,386 INFO    MainThread:174169 [wandb_init.py:init():1075] run started, returning control to user process
+2025-10-21 17:55:07,457 INFO    MainThread:174169 [wandb_run.py:_finish():2260] finishing run sft_llada_recursive/8dgs5oym
+2025-10-21 17:55:07,459 INFO    MainThread:174169 [wandb_run.py:_atexit_cleanup():2459] got exitcode: 0
+2025-10-21 17:55:07,461 INFO    MainThread:174169 [wandb_run.py:_restore():2441] restore
+2025-10-21 17:55:07,461 INFO    MainThread:174169 [wandb_run.py:_restore():2447] restore done
+2025-10-21 17:55:07,465 INFO    MainThread:174169 [wandb_run.py:_footer_history_summary_info():3895] rendering history
+2025-10-21 17:55:07,465 INFO    MainThread:174169 [wandb_run.py:_footer_history_summary_info():3927] rendering summary
