@@ -19,6 +19,10 @@ class UniversalPrompting():
         prompts_list, responses_list = text_ids_pairs
         pad_id = self.text_tokenizer.pad_token_id
 
+        print("pad_token_id: ", pad_id)
+        print("responses_list:", responses_list.shape)
+        print("responses_list:", responses_list.shape)
+
         # 计算每条序列的总长度 = prompt + response + eos
         if responses_list.shape[1] < self.max_gen_length:
             max_seq_len = prompts_list.shape[1] + responses_list.shape[1]
@@ -39,11 +43,14 @@ class UniversalPrompting():
             temp_labels = temp_ids.copy()
 
             # padding 或截断到 max_seq_len
+            print("len(temp_ids): ", len(temp_ids))
+            print("max_seq_len:", max_seq_len)
             if len(temp_ids) < max_seq_len:
                 pad_len = max_seq_len - len(temp_ids)
                 temp_ids.extend([pad_id] * pad_len)
                 temp_labels.extend([pad_id] * pad_len)
                 temp_masks.extend([0] * pad_len)
+                print("padding")
             else:
                 temp_ids = temp_ids[:max_seq_len]
                 temp_labels = temp_labels[:max_seq_len]
@@ -58,6 +65,8 @@ class UniversalPrompting():
         attention_masks = torch.cat(attention_masks, dim=0)
         label_ids = torch.cat(label_ids, dim=0)
         
+        print("input_ids.shape:", input_ids.shape)
+        print("label_ids.shape:", label_ids.shape)
 
         return input_ids, label_ids, prompts_list.shape[1]
 
@@ -97,6 +106,8 @@ class UniversalPrompting():
             return_tensors="pt",
             padding_side = "right"
         )['input_ids']
+        print("prompt_ids.shape: ", prompt_ids.shape)
+        print("response_ids.shape: ", response_ids.shape)
         input_ids_lm, labels_lm, start_pos = self.lm_prompt((prompt_ids, response_ids))
         return input_ids_lm, labels_lm, start_pos, drop_num
 

@@ -136,7 +136,7 @@ def sft_preprocess_gsm8k_aug_nl(
         for q, steps, ans in zip(batch["question"], batch["steps"], batch["answer"]):
             prompt = t.render(problem=q)
             trajectory = "\n".join(steps).strip()
-            resp = f"{trajectory}\nThe final answer is \\boxed{{{ans}}}"
+            resp = f"\n{trajectory}\nThe final answer is \\boxed{{{ans}}}"
             if not resp.endswith(eos_token):
                 resp += eos_token
             prompts.append(prompt)

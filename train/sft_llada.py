@@ -31,9 +31,10 @@ from train.prompting_utils import UniversalPrompting
 from models.lr_schedulers import get_scheduler
 from models.logging import set_verbosity_info, set_verbosity_error
 from data.preprocess_sft import sft_preprocess_gsm8k_aug_nl
+from data.datasets import make_collate_fn_pad, prepare_inputs_and_labels_for_token_ids
 
 from torch.utils.data import Dataset, DataLoader
-
+# from datasets import Dataset
 
 try:
     import apex
@@ -49,44 +50,27 @@ logger = get_logger(__name__, log_level="INFO")
 
 
 class TrainDataset(Dataset):
-    def __init__(self, inputs, labels, pmasks, original_texts=None):
-        self.inputs = inputs
-        self.labels = labels
-        self.pmasks = pmasks
-        self.original_texts = original_texts  # List of (prompt, response) tuples
-
+    def __init__(self, data, tokenizer):
+        self.data = data
+        self.tokenizer = tokenizer
+    
     def __len__(self):
-        return len(self.inputs)
+        return len(self.data)
 
     def __getitem__(self, idx):
-        return (
-            self.inputs[idx],
-            self.labels[idx],
-            self.pmasks[idx]
-        )
-    
-    def get_original_text(self, idx):
-        """Get original prompt/response for debugging"""
-        if self.original_texts is not None and idx < len(self.original_texts):
-            return self.original_texts[idx]
-        return None, None
 
+        sample = self.data[idx]
 
+        prompt_ids = self.tokenizer.encode(sample['prompt'], add_special_tokens=False)
+        target_ids = self.tokenizer.encode(sample['response'], add_special_tokens=False)
+
+        return {
+            "prompt_ids": prompt_ids,
+            "target_ids": target_ids,
+        }
 
 
 def main():
-    # #########################
-    # # Parse arguments       #
-    # #########################
-    # parser = argparse.ArgumentParser(description="SFT training for LLaDA")
-    # parser.add_argument(
-    #     '--config',
-    #     type=str,
-    #     default='configs/sft_llada.yaml',
-    #     help='Path to config yaml file'
-    # )
-    # args = parser.parse_args()
-
     #########################
     # SETUP Accelerator     #
     #########################
@@ -206,13 +190,6 @@ def main():
         logger.info("Gradient checkpointing enabled")
 
 
-    # GPU Memory Check after model loading
-    if torch.cuda.is_available():
-        allocated = torch.cuda.memory_allocated() / 1024**3
-        reserved = torch.cuda.memory_reserved() / 1024**3
-        total = torch.cuda.get_device_properties(0).total_memory / 1024**3
-        logger.info(f"[After Model Load] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
-
     mask_id = tokenizer.encode('<|mdm_mask|>')[0]
     pad_id = tokenizer.encode('<|endoftext|>')[0]
 
@@ -248,208 +225,33 @@ def main():
     else:
         raise ValueError(f"Optimizer {optimizer_type} not supported")
 
-    def collapse_k_unique(lst, k: int):
-        if k <= 0:
-            raise ValueError("k must be > 0")
-        uniq = sorted(set(lst))
-
-        mapping = {}
-        n = len(uniq)
-        for idx, val in enumerate(uniq):
-            group = idx // k
-            end_idx = min((group + 1) * k - 1, n - 1)
-            rep = uniq[end_idx]
-            mapping[val] = rep
-        return [mapping[x] for x in lst]
-
     ##################################
     #         DATALOADER             #
     #################################
     logger.info("Creating dataloaders and lr_scheduler")
 
-    @torch.no_grad()
-    def prepare_inputs_and_labels_for_text(
-        prompt, response, step_map, eps=1e-3, mask_id=mask_id
-    ):
-        input_ids_lm, labels_lm, start_pos, drop_num = uni_prompting((prompt, response))
-
-        B, L = input_ids_lm.shape
-        max_gen_len = config.training.max_gen_length
-        if max_gen_len + start_pos < L:
-            L_after = start_pos + max_gen_len
-        else:
-            L_after = L
-        input_ids_lm = input_ids_lm[:, :L_after]
-        labels_lm = labels_lm[:, :L_after]
-
-        lower = config.training.lower_p
-        upper = config.training.upper_p
-
-        if config.training.method == "semi-ar":
-
-            noisy_list, label_list, pmask_list = [], [], []
-
-            device = input_ids_lm.device
-            B, L   = input_ids_lm.shape
-
-            for b in range(B):
-                # 1) transform step_map
-                order_list = list(step_map[b])
-                order_list = collapse_k_unique(order_list, config.training.block_size)
-                order = torch.as_tensor(order_list, device=device)
-                order_full = torch.full((L_after,), -1, device=device)
-                order_full[start_pos:] = order[: L_after - start_pos]
-
-                uniq_steps = torch.unique(order_full[start_pos:], sorted=True)
-
-                base_ids = input_ids_lm[b]  # (L,)
-
-                if config.training.post_num is not None:
-                    pad_mask_b = (base_ids == pad_id)
-                    pad_mask_b[:start_pos] = False
-                    keep_first_pad_b = pad_mask_b & (torch.cumsum(pad_mask_b.int(), dim=0) <= config.training.post_num)
-                    tail_pad_b       = pad_mask_b & ~keep_first_pad_b
-                else:
-                    keep_first_pad_b = torch.zeros(L, dtype=torch.bool, device=device)
-                    tail_pad_b       = torch.zeros(L, dtype=torch.bool, device=device)
-
-                for i in range(0, len(uniq_steps)):
-
-                    block_mask = (order_full == uniq_steps[i])
-                    p = torch.empty(L, device=device).uniform_(lower, upper)
-                    block_mask = (torch.rand(L, device=device) < p) & block_mask
-
-                    noisy_ids = base_ids.clone()
-                    mask_pos  = (order_full > uniq_steps[i]) | block_mask
-                    noisy_ids[mask_pos] = mask_id
-
-                    pmask_this = block_mask & ~tail_pad_b
-
-                    if not pmask_this.any():
-                        continue
-
-                    noisy_list.append(noisy_ids)
-                    label_list.append(labels_lm[b])
-                    pmask_list.append(pmask_this)
-
-                del order, order_full, uniq_steps
-
-            noisy_batch = torch.stack(noisy_list)
-            labels_lm   = torch.stack(label_list)
-            p_mask      = torch.stack(pmask_list)
-
-        elif config.training.method == "random_masking":
-            m = config.training.mask_times_per_sample
-            B, L = input_ids_lm.shape
-            device = input_ids_lm.device
-
-            noisy_list, label_list, pmask_list = [], [], []
-            for b in range(B):
-                base_ids  = input_ids_lm[b]
-                label_ids = labels_lm[b]
-
-                if config.training.post_num is not None:
-                    pad_mask_b = (base_ids == pad_id)
-                    pad_mask_b[:start_pos] = False
-                    keep_first_pad_b = pad_mask_b & (torch.cumsum(pad_mask_b.int(), dim=0) <= config.training.post_num)
-                    tail_pad_b       = pad_mask_b & ~keep_first_pad_b
-                else:
-                    keep_first_pad_b = torch.zeros(L, dtype=torch.bool, device=device)
-                    tail_pad_b       = torch.zeros(L, dtype=torch.bool, device=device)
-
-                for _ in range(m):
-                    t = (upper - lower) * torch.rand(1, device=device) + lower
-                    rand_mask = torch.rand(L, device=device) < t
-                    rand_mask[:start_pos] = False
-                    rand_mask = rand_mask & ~tail_pad_b
-
-                    if not rand_mask.any():
-                        continue
-
-                    noisy_ids = base_ids.clone()
-                    noisy_ids[rand_mask]   = mask_id
-                    noisy_ids[tail_pad_b]  = mask_id
-
-                    noisy_list.append(noisy_ids)
-                    label_list.append(label_ids)
-                    pmask_list.append(rand_mask)
-
-            noisy_batch = torch.stack(noisy_list)    # (B*m, L)
-            labels_lm   = torch.stack(label_list)
-            p_mask      = torch.stack(pmask_list)
-
-        valid_rows = p_mask.any(dim=1)
-        noisy_batch = noisy_batch[valid_rows]
-        labels_lm   = labels_lm[valid_rows]
-        p_mask      = p_mask[valid_rows]
-
-        return noisy_batch, labels_lm, p_mask, start_pos, drop_num
-
-    def simple_collate(batch):
-        inp, lbl, msk = zip(*batch)  
-        return {
-            "input_ids":  torch.stack(inp),
-            "labels":     torch.stack(lbl),
-            "p_mask_lm":  torch.stack(msk)
-        }
-
-    from tqdm import tqdm
-
     dataset_name = config.dataset.train_data
     if dataset_name == 'gsm8k_aug_nl':
         logger.info("Preprocessing data....")
-        dataset_load = sft_preprocess_gsm8k_aug_nl(split='train', model='llada', max_size=16 if config.debug else None)
+        dataset_load = sft_preprocess_gsm8k_aug_nl(split='train', model='llada', max_size=32 if config.debug else None)
     else:
         with open(f"./data/sft_{config.dataset.optimization_data}_llada.json", 'r') as f:
             print(f"Dataset Name: {config.dataset.optimization_data}")
             dataset_load = json.load(f)
 
     # dataset_load = dataset_load[:24]
-    prompt_list = []
-    response_list = []
-    step_map_list = []
-    for x in dataset_load:
-        prompt_list.append(x["prompt"])
-        response_list.append(x["response"])
-        if "step_map" not in x.keys():
-            step_map_list.append([j for j in range(config.training.max_gen_length)])
-        else:
-            step_map_list.append(x["step_map"])
-    input_ids, labels, p_mask_lm, start_pos, drop_num = prepare_inputs_and_labels_for_text(prompt_list, response_list, step_map_list)
-
-    # Build mapping from expanded samples back to original texts
-    # Since prepare_inputs_and_labels_for_text may expand samples (multiple masks per sample),
-    # we need to track which original sample each expanded sample came from
-    original_texts = []
-    sample_idx = 0
-    for i in range(len(prompt_list)):
-        # Each original sample may generate multiple training samples
-        # We'll store the original (prompt, response) for each expanded sample
-        original_texts.append((prompt_list[i], response_list[i]))
-
-    # Note: The actual expansion happens inside prepare_inputs_and_labels_for_text
-    # We need to replicate the expansion logic to build correct mapping
-    # For simplicity, we'll create a mapping based on the actual number of samples
-    if len(input_ids) > len(prompt_list):
-        # Samples were expanded, replicate original texts
-        expanded_texts = []
-        for i in range(len(input_ids)):
-            # Map back to original sample (approximate)
-            orig_idx = i % len(prompt_list)
-            expanded_texts.append((prompt_list[orig_idx], response_list[orig_idx]))
-        original_texts = expanded_texts
-
-    dataset_lm = TrainDataset(input_ids, labels, p_mask_lm, original_texts=original_texts)
-
-    # GPU Memory Check after data preparation
-    if torch.cuda.is_available():
-        allocated = torch.cuda.memory_allocated() / 1024**3
-        reserved = torch.cuda.memory_reserved() / 1024**3
-        total = torch.cuda.get_device_properties(0).total_memory / 1024**3
-        logger.info(f"[After Data Prep] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
+    dataset_tokenized = TrainDataset(dataset_load, tokenizer)    
+    
+    train_dataloader_lm = DataLoader(
+        dataset_tokenized,
+        batch_size=config.training.batch_size_lm,
+        sampler=None,
+        collate_fn=make_collate_fn_pad(pad_id),
+        num_workers=0
+    )
 
     total_batch_size_lm = config.training.batch_size_lm * accelerator.num_processes * config.training.gradient_accumulation_steps
-    num_update_steps_per_epoch = math.ceil(len(dataset_lm) / total_batch_size_lm)
+    num_update_steps_per_epoch = math.ceil(len(dataset_tokenized) / total_batch_size_lm)
     num_train_epochs = config.training.num_train_epochs
     max_train_steps = num_update_steps_per_epoch * num_train_epochs + 1
 
@@ -461,13 +263,8 @@ def main():
         min_lr_scale=config.lr_scheduler.params.min_lr_scale
     )
 
-    train_dataloader_lm = DataLoader(
-        dataset_lm,
-        batch_size=config.training.batch_size_lm,
-        sampler=None,
-        collate_fn=simple_collate,
-        num_workers=0
-    )
+
+
 
     ##################################
     #       Prepare accelerator     #
@@ -477,13 +274,6 @@ def main():
     model, optimizer, lr_scheduler, train_dataloader_lm = accelerator.prepare(
         model, optimizer, lr_scheduler, train_dataloader_lm
     )
-
-    # GPU Memory Check after accelerator prepare
-    if torch.cuda.is_available():
-        allocated = torch.cuda.memory_allocated() / 1024**3
-        reserved = torch.cuda.memory_reserved() / 1024**3
-        total = torch.cuda.get_device_properties(0).total_memory / 1024**3
-        logger.info(f"[After Accelerator Prepare] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
     # Access the underlying model when wrapped in DDP
     unwrapped_model = accelerator.unwrap_model(model)
@@ -495,8 +285,7 @@ def main():
     logger.info("***** Running training *****")
 
     logger.info(f"  Num response = {len(dataset_load)}")
-    logger.info(f"  Num sample dropped = {drop_num}")
-    logger.info(f"  Num training data = {input_ids.shape[0]}")
+    logger.info(f"  Num training data = {len(dataset_tokenized)}")
     logger.info(f"  Num training steps = {max_train_steps}")
     logger.info(f"  Instantaneous batch size per device = {config.training.batch_size_lm}")
     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size_lm}")
@@ -575,78 +364,41 @@ def main():
 
         model.train()
 
-        progress_bar = tqdm(
-            train_dataloader_lm,
-            desc=f"Epoch {epoch+1}/{num_train_epochs}",
-            disable=not accelerator.is_local_main_process,
-            dynamic_ncols=True,    
-            leave=True          
-        )
+        # progress_bar = tqdm(
+        #     train_dataloader_lm,
+        #     desc=f"Epoch {epoch+1}/{num_train_epochs}",
+        #     disable=not accelerator.is_local_main_process,
+        #     dynamic_ncols=True,    
+        #     leave=True          
+        # )
 
-        for step, batch in enumerate(progress_bar, start=1):
+        # for step, batch in enumerate(progress_bar, start=1):
+        for step, batch in enumerate(train_dataloader_lm):
 
             # for loss calculation
 
             data_time_m.update(time.time() - end)
 
-            input_ids = batch["input_ids"].to(accelerator.device)
-            labels    = batch["labels"].to(accelerator.device)
-            p_mask_lm = batch["p_mask_lm"].to(accelerator.device)
+            noisy_batch, labels, p_mask_lm = prepare_inputs_and_labels_for_token_ids(batch["input_ids"], batch["prompt_len"], mask_id)
+
+            noisy_batch = noisy_batch.to(accelerator.device)
+            labels    = labels.to(accelerator.device)
+            p_mask_lm = p_mask_lm.to(accelerator.device)
+
 
             # Debug: Print prompt/response for first 5 steps
-            if step <= 5 and accelerator.is_main_process:
+            if step % 50 ==0 and accelerator.is_main_process:
                 logger.info(f"\n{'='*80}")
                 logger.info(f"[DEBUG] Step {step} - Input Inspection")
                 logger.info(f"{'='*80}")
 
                 # Get batch info
-                batch_size = input_ids.shape[0]
-                seq_len = input_ids.shape[1]
+                batch_size = noisy_batch.shape[0]
+                seq_len = noisy_batch.shape[1]
                 logger.info(f"Batch size: {batch_size}, Sequence length: {seq_len}")
 
-                # Print first sample in batch
-                sample_input_ids = input_ids[0].cpu()
-                sample_labels = labels[0].cpu()
-                sample_pmask = p_mask_lm[0].cpu()
-
-                # Show mask statistics
-                mask_positions = torch.where(sample_pmask)[0].tolist()
-                num_masks = len(mask_positions)
-                mask_ratio = num_masks / seq_len
-                logger.info(f"\n[Mask Statistics]: {num_masks} masks / {seq_len} tokens = {mask_ratio:.2%}")
-                logger.info(f"[Mask positions (first 20)]: {mask_positions[:20]}...")
-
-                # Reconstruct original text by replacing masks with labels
-                original_ids = sample_input_ids.clone()
-                mask_token_id = tokenizer.encode('<|mdm_mask|>')[0]
-                original_ids[sample_pmask] = sample_labels[sample_pmask]
-
-                # Decode both masked and original
-                masked_text = tokenizer.decode(sample_input_ids, skip_special_tokens=True)
-                original_text = tokenizer.decode(original_ids, skip_special_tokens=True)
-
-                logger.info(f"\n[Masked Input (what model sees)]:\n{masked_text}")
-                logger.info(f"\n[Original Text (ground truth)]:\n{original_text}")
-
-                # Try to get original prompt/response from dataset
-                global_step_approx = (epoch * len(train_dataloader_lm) + step - 1) * batch_size
-                if global_step_approx < len(dataset_lm):
-                    prompt, response = dataset_lm.get_original_text(global_step_approx)
-                    if prompt is not None:
-                        logger.info(f"\n[Dataset Prompt]:\n{prompt}")
-                        logger.info(f"\n[Dataset Response]:\n{response}")
-
-                logger.info(f"{'='*80}\n")
-
-            # GPU Memory Check before forward
-            if step <= 5 and torch.cuda.is_available():
-                allocated = torch.cuda.memory_allocated() / 1024**3
-                reserved = torch.cuda.memory_reserved() / 1024**3
-                total = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                logger.info(f"[Step {step} Before Forward] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB, Batch size: {input_ids.shape}")
-
             loss_lm = forward_process(
-                    input_ids=input_ids,
+                    input_ids=noisy_batch,
                     labels=labels,
                     p_mask_lm=p_mask_lm,
                     H_cycles=R,
@@ -654,23 +406,9 @@ def main():
                 )
             loss_lm = loss_lm / accelerator.gradient_accumulation_steps
 
-            # GPU Memory Check after forward
-            if step <= 5 and torch.cuda.is_available():
-                allocated = torch.cuda.memory_allocated() / 1024**3
-                reserved = torch.cuda.memory_reserved() / 1024**3
-                total = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                logger.info(f"[Step {step} After Forward] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
-
             # print(loss_lm)
             logger.info(f"Step {step} Loss: {loss_lm}")
             accelerator.backward(loss_lm)
-
-            # GPU Memory Check after backward
-            if step <= 5 and torch.cuda.is_available():
-                allocated = torch.cuda.memory_allocated() / 1024**3
-                reserved = torch.cuda.memory_reserved() / 1024**3
-                total = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                logger.info(f"[Step {step} After Backward] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
             if (step + 1) % accelerator.gradient_accumulation_steps == 0:
                 if config.training.max_grad_norm is not None:
@@ -693,24 +431,17 @@ def main():
 
                 global_step += 1
 
-                del input_ids, labels, p_mask_lm
+                del noisy_batch, labels, p_mask_lm
                 torch.cuda.empty_cache()
 
-                # GPU Memory Check after optimizer step and cleanup
-                if global_step <= 5 and torch.cuda.is_available():
-                    allocated = torch.cuda.memory_allocated() / 1024**3
-                    reserved = torch.cuda.memory_reserved() / 1024**3
-                    total = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                    logger.info(f"[Global Step {global_step} After Cleanup] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
-
         # Save checkpoint at the end of each epoch with epoch and global_step in the filename
-        checkpoint_name = f"checkpoint-epoch{epoch+1}-step{global_step}.pth"
-        save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name)
+        checkpoint_name = f"checkpoint-epoch{epoch+1}-step{global_step}"
+        # save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name)
 
     accelerator.wait_for_everyone()
 
     # save checkpoint at the end of training
-    save_checkpoint(model, tokenizer, config, accelerator, config.model.optimized_name)
+    # save_checkpoint(model, tokenizer, config, accelerator, config.model.optimized_name)
 
     accelerator.end_training()
 

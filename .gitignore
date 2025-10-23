@@ -1,7 +1,6 @@
 */__pycache__/
 /__pycache__/
-/sft_llada_recursive/
-/sft_llada_recursive1/
+/sft_llada_recursive2/
 *.json
 output.txt
 eval.txt

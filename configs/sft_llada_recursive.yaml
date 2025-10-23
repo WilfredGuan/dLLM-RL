@@ -1,5 +1,5 @@
 experiment:
-    project: "sft_llada_recursive1"
+    project: "sft_llada_recursive2"
     num_node: 1
 
 debug: False
@@ -19,7 +19,7 @@ training:
     mixed_precision: "bf16"
     enable_tf32: False
     seed: 42
-    num_train_epochs: 50
+    num_train_epochs: 25
     max_grad_norm: 1
 
     # Masking strategy
@@ -28,8 +28,8 @@ training:
     upper_p: 0.9
     block_size: 32
     mask_times_per_sample: 1
-    post_num: 0
-    max_gen_length: 1024
+    post_num: 8
+    max_gen_length: 512
     max_prompt_len: 784
     
     # Latent Recursive parameters

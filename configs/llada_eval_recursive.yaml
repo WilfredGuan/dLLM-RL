@@ -4,7 +4,7 @@ experiment:
     node_index: 0 # no need to change
 
 model:
-    model_path: "/mnt/shared-storage-user/gaoxin1/project/dLLM-RL/sft_llada_recursive/ckpt/optimized_recursive" # absolute path of your model
+    model_path: "/mnt/shared-storage-user/gaoxin1/project/dLLM-RL/sft_llada_recursive1/ckpt/checkpoint-epoch22-step2068.pth" # absolute path of your model
     model_base: "llada" # set llada for LLaDA and MMaDA
     # Latent Recursive parameters
     use_latent_recursive: True
@@ -12,7 +12,7 @@ model:
 
 # dataset you want to eval on, you need to download first, you can also modify your own dataset, see instructions in ./data
 dataset:
-    eval_dataset: "GSM8K" #"MBPP""MATH500""GSM8K""AIME2024""GPQA""LiveCodeBench""HumanEval""LiveBench"
+    eval_dataset: "GSM8K-aug" #"MBPP""MATH500""GSM8K""AIME2024""GPQA""LiveCodeBench""HumanEval""LiveBench"
     data_type: "math" #"code""math"
 
 execute:
@@ -21,7 +21,7 @@ execute:
 rollout:
     num_response_per_task: 1
     temperature: 0.1
-    max_gen_length: 1024
+    max_gen_length: 512
     batch_size: 1
     remasking_strategy: "low_confidence_static" #"low_confidence_static""low_confidence_dynamic"
     target: "confidence" # target to decide which tokens to unmask, eg. confidence, margin_confidence and neg_entropy
@@ -37,7 +37,7 @@ rollout:
     
     R: 2                              # Number of latent thinking steps per cycle
     unmask_token_number_per_step: 4   # Number of tokens to unmask per forward step
-    block_size: 32                    # Total tokens processed per block
+    block_size: 16                    # Total tokens processed per block
                                       # Constraint: block_size must be divisible by (N * unmask_token_number_per_step)
     
     # ========== Calculation Example ==========

@@ -401,7 +401,7 @@ if __name__ == "__main__":
     with open("../data/" + dataset + ".json", 'r') as f:
         data = json.load(f)
     
-    # data = [data[i] for i in range(8)]
+    data = [data[i] for i in range(128)]
     
     num_node = config.experiment.num_node
     node_index = config.experiment.node_index
