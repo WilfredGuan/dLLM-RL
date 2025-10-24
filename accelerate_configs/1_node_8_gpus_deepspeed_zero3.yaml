@@ -8,7 +8,12 @@ deepspeed_config:
   zero3_save_16bit_model: true
   zero_stage: 3
   zero_optimization:
-    overlap_comm: false
+    overlap_comm: true
+    contiguous_gradients: true
+    stage3_prefetch_bucket_size: 5e7
+    stage3_param_persistence_threshold: 1e5
+    stage3_max_live_parameters: 1e8
+    stage3_max_reuse_distance: 1e8
 distributed_type: DEEPSPEED
 downcast_bf16: 'no'
 main_training_function: main

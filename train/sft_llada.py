@@ -27,7 +27,6 @@ from accelerate.utils import set_seed
 from train.utils import get_config, flatten_omega_conf, AverageMeter
 
 from models import LLaDAModelLM, LLaDAModelLMRecursive
-from train.prompting_utils import UniversalPrompting
 from models.lr_schedulers import get_scheduler
 from models.logging import set_verbosity_info, set_verbosity_error
 
@@ -147,9 +146,6 @@ def main():
     logger.info("Loading models and optimizer")
 
     tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
-    uni_prompting = UniversalPrompting(tokenizer, max_prompt_len=config.training.max_prompt_len,
-                                       max_gen_length=config.training.max_gen_length,
-                                       ignore_id=-100)
 
     # Choose model class based on config
     use_latent_recursive = config.training.get('use_latent_recursive', False)
@@ -157,14 +153,12 @@ def main():
 
     if use_latent_recursive:
         logger.info("Loading LLaDAModelLMRecursive (with latent recursive support)")
-        # Load config first and modify it before loading model
         from models.llada.configuration_llada import LLaDAConfig
         model_config = LLaDAConfig.from_pretrained(pretrained_model)
         R = config.training.get('R', 1)
         model_config.use_latent_recursive = True
         model_config.max_latent_recursive_steps = R
 
-        # Load model with modified config
         model = LLaDAModelLMRecursive.from_pretrained(
             pretrained_model, 
             config=model_config,
@@ -176,7 +170,6 @@ def main():
         if hasattr(model.model, 'latent_step_embedding'):
             logger.info("Initializing latent_step_embedding...")
             nn.init.normal_(model.model.latent_step_embedding.weight, mean=0.0, std=0.02)
-            # Convert to bfloat16 to match model dtype
             model.model.latent_step_embedding.weight.data = model.model.latent_step_embedding.weight.data.to(torch.bfloat16)
             logger.info(f"latent_step_embedding initialized: shape={model.model.latent_step_embedding.weight.shape}, dtype={model.model.latent_step_embedding.weight.dtype}")
 
@@ -196,10 +189,12 @@ def main():
             model.enable_input_require_grads()
         logger.info("Gradient checkpointing enabled")
 
-    # Freeze first half of layers if configured
+    # Freeze layers and set trainable_layer_start_idx based on config
     freeze_first_half = config.training.get('freeze_first_half_layers', False)
-    if freeze_first_half:
-        logger.info("Freezing first half of transformer layers...")
+    trainable_layer_start_idx = config.training.get('trainable_layer_start_idx', None)
+
+    if freeze_first_half or trainable_layer_start_idx is not None:
+        logger.info("Configuring layer freezing and trainable_layer_start_idx...")
 
         # Get the blocks
         if hasattr(model.model.transformer, 'blocks'):
@@ -210,24 +205,53 @@ def main():
             raise ValueError("Cannot find transformer blocks in model")
 
         n_layers = len(blocks)
-        freeze_until = n_layers // 2
+
+        # Determine freeze_until based on config
+        if trainable_layer_start_idx is not None:
+            # Use explicit trainable_layer_start_idx from config
+            freeze_until = trainable_layer_start_idx
+            logger.info(f"Using explicit trainable_layer_start_idx={freeze_until} from config")
+        elif freeze_first_half:
+            # Auto-calculate as n_layers // 2
+            freeze_until = n_layers // 2
+            logger.info(f"Auto-calculating trainable_layer_start_idx={freeze_until} (n_layers//2)")
+        else:
+            freeze_until = 0
 
         logger.info(f"Total layers: {n_layers}, Freezing layers 0-{freeze_until-1}, Training layers {freeze_until}-{n_layers-1}")
 
-        # Freeze first half
-        for i in range(freeze_until):
-            for param in blocks[i].parameters():
-                param.requires_grad = False
+        # Freeze layers before freeze_until
+        if freeze_until > 0:
+            for i in range(freeze_until):
+                for param in blocks[i].parameters():
+                    param.requires_grad = False
 
         # Set freeze configuration in model for forward_latent_only
-        model.model.freeze_first_half_layers = True
+        model.model.freeze_first_half_layers = (freeze_until > 0)
         model.model.trainable_layer_start_idx = freeze_until
-        logger.info(f"Set model.freeze_first_half_layers=True, trainable_layer_start_idx={freeze_until}")
+        logger.info(f"Set model.freeze_first_half_layers={freeze_until > 0}, trainable_layer_start_idx={freeze_until}")
 
         # Count trainable parameters
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100*trainable_params/total_params:.2f}%)")
+        if total_params > 0:
+            logger.info(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100*trainable_params/total_params:.2f}%)")
+        else:
+            logger.info(f"Trainable parameters: {trainable_params:,} / {total_params:,} (DeepSpeed Zero3: parameters are sharded)")
+
+    # Set recursive_start_layer_idx for latent recursive
+    recursive_start_layer_idx = config.training.get("recursive_start_layer_idx", None)
+    if recursive_start_layer_idx is not None:
+        model.model.recursive_start_layer_idx = recursive_start_layer_idx
+        logger.info(
+            f"Set model.recursive_start_layer_idx={recursive_start_layer_idx} from config"
+        )
+    else:
+        # Default to trainable_layer_start_idx if not specified
+        model.model.recursive_start_layer_idx = model.model.trainable_layer_start_idx
+        logger.info(
+            f"Set model.recursive_start_layer_idx={model.model.trainable_layer_start_idx} (using trainable_layer_start_idx)"
+        )
 
     # GPU Memory Check after model loading
     if torch.cuda.is_available():
@@ -294,7 +318,63 @@ def main():
     def prepare_inputs_and_labels_for_text(
         prompt, response, step_map, eps=1e-3, mask_id=mask_id
     ):
-        input_ids_lm, labels_lm, start_pos, drop_num = uni_prompting((prompt, response))
+        # 动态处理：tokenize + padding + 创建labels（复用prompting_utils.py逻辑）
+        max_prompt_len = config.training.max_prompt_len
+        max_gen_length = config.training.max_gen_length
+        
+        # 1. Tokenize prompts (left padding)
+        prompt_ids = tokenizer(
+            prompt,
+            padding=True,
+            return_tensors="pt",
+            padding_side="left",
+            truncation=True,
+            max_length=max_prompt_len
+        )['input_ids']
+        
+        # 2. Tokenize responses (right padding)
+        response_ids = tokenizer(
+            response,
+            padding=True,
+            return_tensors="pt",
+            padding_side="right",
+            truncation=True,
+            max_length=max_gen_length
+        )['input_ids']
+        
+        # 3. 拼接 prompt + response
+        if response_ids.shape[1] < max_gen_length:
+            max_seq_len = prompt_ids.shape[1] + response_ids.shape[1]
+        else:
+            max_seq_len = prompt_ids.shape[1] + max_gen_length
+        
+        sequence_ids = []
+        label_ids = []
+        
+        for prompt_id, resp_id in zip(prompt_ids, response_ids):
+            prompt_id = prompt_id.tolist()
+            resp_id = resp_id.tolist()
+            
+            # 拼接
+            temp_ids = prompt_id + resp_id
+            temp_labels = temp_ids.copy()
+            
+            # Padding或截断
+            if len(temp_ids) < max_seq_len:
+                pad_len = max_seq_len - len(temp_ids)
+                temp_ids.extend([pad_id] * pad_len)
+                temp_labels.extend([-100] * pad_len)  # ✅ padding位置设为-100
+            else:
+                temp_ids = temp_ids[:max_seq_len]
+                temp_labels = temp_labels[:max_seq_len]
+            
+            sequence_ids.append(torch.tensor(temp_ids).unsqueeze(0))
+            label_ids.append(torch.tensor(temp_labels).unsqueeze(0))
+        
+        input_ids_lm = torch.cat(sequence_ids, dim=0)
+        labels_lm = torch.cat(label_ids, dim=0)
+        start_pos = prompt_ids.shape[1]
+        drop_num = 0  # 不再过滤样本
 
         B, L = input_ids_lm.shape
         max_gen_len = config.training.max_gen_length
@@ -506,22 +586,19 @@ def main():
     first_epoch = 0
     global_step = 0
     resume_from_checkpoint = config.get('checkpoint', {}).get('resume_from_checkpoint', None)
-    
+
     if resume_from_checkpoint is not None:
         logger.info(f"***** Resuming from checkpoint: {resume_from_checkpoint} *****")
         checkpoint_path = Path(resume_from_checkpoint)
-        
+
         # Check if this is a training checkpoint (has accelerator state) or final checkpoint (model only)
-        # Training checkpoints: checkpoint-{step}/ with optimizer.bin, scheduler.bin, etc.
-        # Final checkpoints: ckpt/ with model in subdirectory (e.g., optimized_recursive/)
-        is_training_checkpoint = (checkpoint_path / "optimizer.bin").exists() or \
-                                (checkpoint_path / "optimizer_0" / "optimizer.bin").exists()
-        
+        is_training_checkpoint = (checkpoint_path / "optimizer.bin").exists()
+
         if is_training_checkpoint:
             # Load complete training state (model, optimizer, lr_scheduler, RNG states, etc.)
             logger.info("  Loading training checkpoint with full state...")
             accelerator.load_state(resume_from_checkpoint)
-            
+
             # Load metadata to get global_step and epoch info
             metadata_path = checkpoint_path / "metadata.json"
             if metadata_path.exists():
@@ -532,27 +609,28 @@ def main():
                     logger.info(f"  Checkpoint saved at: {metadata.get('save_time', 'unknown')}")
             else:
                 logger.warning(f"  metadata.json not found, starting from step 0")
-            
+
             # Calculate which epoch we're in based on global_step
             steps_per_epoch = math.ceil(len(dataset_lm) / total_batch_size_lm)
             first_epoch = global_step // steps_per_epoch
             logger.info(f"  Successfully resumed training from step {global_step}, epoch {first_epoch}")
         else:
             # This is a final checkpoint with only model weights
-            logger.info("  Loading final checkpoint (model weights only)...")
+            logger.info("  Final checkpoint (model weights only)...")
+            logger.info("  Loading model weights...")
             
             # Find model directory (e.g., optimized_recursive/)
             model_dirs = [d for d in checkpoint_path.iterdir() if d.is_dir() and d.name != "tensorboard_logs"]
             if not model_dirs:
                 raise ValueError(f"No model directory found in {checkpoint_path}")
-            
+
             model_dir = model_dirs[0]
             logger.info(f"  Loading model from {model_dir}")
-            
+
             # Load model state dict from safetensors
             from safetensors.torch import load_file
             import glob
-            
+
             safetensor_files = sorted(glob.glob(str(model_dir / "model-*.safetensors")))
             if safetensor_files:
                 # Load sharded model
@@ -560,25 +638,26 @@ def main():
                 for shard_file in safetensor_files:
                     shard_state = load_file(shard_file)
                     state_dict.update(shard_state)
-                
+
                 # Load into model
                 unwrapped_model = accelerator.unwrap_model(model)
                 missing_keys, unexpected_keys = unwrapped_model.load_state_dict(state_dict, strict=False)
-                
+
                 if missing_keys:
-                    logger.warning(f"  Missing keys: {missing_keys[:5]}...")  # Show first 5
+                    logger.warning(f"  Missing keys: {missing_keys[:5]}...")
                 if unexpected_keys:
                     logger.warning(f"  Unexpected keys: {unexpected_keys[:5]}...")
-                
+
                 logger.info(f"  Successfully loaded model weights from {model_dir}")
-                logger.info("  Note: Optimizer/scheduler states NOT restored (starting fresh)")
             else:
                 raise ValueError(f"No safetensors files found in {model_dir}")
-        
+            
+            logger.info("  Note: Optimizer/scheduler states NOT restored (starting fresh)")
+
         logger.info(f"  Resuming from epoch: {first_epoch}")
         logger.info(f"  Total steps completed: {global_step}")
         logger.info(f"  Remaining steps: {max_train_steps - global_step}")
-        
+
         accelerator.wait_for_everyone()
 
     # Access the underlying model when wrapped in DDP
@@ -620,102 +699,60 @@ def main():
         Forward process with optional latent recursive.
         Training uses R steps of latent thinking, then computes loss directly.
         """
+        # Handle DDP wrapper - define unwrapped_model at the start
+        unwrapped_model = model.module if hasattr(model, 'module') else model
+        
         if not (use_latent_recursive and recursive_in_training):
             # Original logic
             logits = model(input_ids).logits
         else:
-            # Latent recursive logic with R steps
-            # Correct logic:
-            # 1. Full forward once: inputs -> all layers -> get hidden states BEFORE ln_f (倒数第二层)
-            # 2. R steps of recursive thinking in trainable layers (trainable_layer_start_idx to last block)
-            # 3. forward_latent_only already applies ln_f at the end, so we can directly compute logits
+            # Recursive logic
+            # Get initial hidden states through full forward
+            with torch.no_grad():
+                outputs = model(input_ids, output_hidden_states=True)
+                hidden_states = outputs.hidden_states[-1] if outputs.hidden_states else None
             
-            # Unwrap model from DDP
-            unwrapped_model = accelerator.unwrap_model(model)
-
-            # 1. Full forward once to get hidden states BEFORE ln_f (倒数第二层)
-            batch_size, seq_len = input_ids.shape
-            
-            # Get embeddings
-            x = unwrapped_model.model.transformer.wte(input_ids)
-            if unwrapped_model.config.input_emb_norm:
-                x = x * (unwrapped_model.config.d_model**0.5)
-            x = unwrapped_model.model.transformer.emb_drop(x)
-            
-            # Get attention bias (import get_causal_attention_bias if needed)
-            from models.llada.modeling_recursive_llada import get_causal_attention_bias
-            attention_bias = get_causal_attention_bias(
-                unwrapped_model.model._LLaDAModel__cache, seq_len, x.device
-            )
-            attention_bias = attention_bias[:, :, :seq_len, :seq_len].to(dtype=torch.float)
-            
-            # Forward through all blocks to get hidden states before ln_f
-            if unwrapped_model.config.block_group_size == 1:
-                for block in unwrapped_model.model.transformer.blocks:
-                    x, _ = block(x, attention_bias=attention_bias, layer_past=None, use_cache=False)
+            if hidden_states is None:
+                # Fallback: do a simple forward
+                logits = model(input_ids).logits
             else:
-                for block_group in unwrapped_model.model.transformer.block_groups:
-                    x, _ = block_group(x, attention_bias=attention_bias, layers_past=None, use_cache=False)
-            
-            # Now x is the hidden states BEFORE ln_f (倒数第二层)
-            hidden_states = x
-            
-            logger.debug(f"Got hidden states before ln_f, shape: {hidden_states.shape}")
-
-            # NaN check for hidden states
-            if torch.isnan(hidden_states).any():
-                logger.error(f"NaN detected in hidden states before ln_f!")
-                raise ValueError("NaN in hidden states after initial forward")
-
-            # Check latent_step_embedding weights before starting
-            if hasattr(unwrapped_model.model, 'latent_step_embedding'):
-                step_emb_weight = unwrapped_model.model.latent_step_embedding.weight
-                if torch.isnan(step_emb_weight).any():
-                    logger.error(f"NaN in latent_step_embedding weights!")
-                    logger.error(f"Weight shape: {step_emb_weight.shape}")
-                    logger.error(f"Weight stats: min={step_emb_weight.min()}, max={step_emb_weight.max()}")
-                    raise ValueError("latent_step_embedding has NaN weights")
-                if torch.isinf(step_emb_weight).any():
-                    logger.error(f"Inf in latent_step_embedding weights!")
-                    raise ValueError("latent_step_embedding has Inf weights")
-
-            # 2. Latent recursive phase: R steps of latent thinking in trainable layers
-            # forward_latent_only will process from trainable_layer_start_idx to last block (循环)
-            for step in range(R):
-                hidden_states = unwrapped_model.model.forward_latent_only(
-                    hidden_states=hidden_states,
-                    latent_step=step,
-                    attention_bias=attention_bias,
-                )
+                # Use unwrapped_model defined at function start
+                base_model = unwrapped_model.model
                 
-                logger.debug(f"Completed latent step {step+1}/{R}")
-
-                # NaN check
-                if torch.isnan(hidden_states).any():
-                    logger.error(f"NaN detected at latent step {step}")
-                    raise ValueError(f"NaN at latent step {step}")
-
-            # 3. Apply ln_f after all recursive steps
-            hidden_states = unwrapped_model.model.transformer.ln_f(hidden_states)
-            
-            # NaN check after ln_f
-            if torch.isnan(hidden_states).any():
-                logger.error(f"NaN detected after ln_f!")
-                raise ValueError("NaN after ln_f")
-
-            # 4. Compute logits from final hidden states
-            if unwrapped_model.config.weight_tying:
-                logits = F.linear(hidden_states, unwrapped_model.model.transformer.wte.weight, None)
-            else:
-                logits = unwrapped_model.model.transformer.ff_out(hidden_states)
-
-            if hasattr(unwrapped_model.config, 'scale_logits') and unwrapped_model.config.scale_logits:
-                logits = logits * (1 / math.sqrt(unwrapped_model.config.d_model))
-
-            # NaN check for logits
-            if torch.isnan(logits).any():
-                logger.error(f"NaN detected in logits!")
-                raise ValueError("NaN in logits")
+                # Get model dtype FIRST
+                model_dtype = next(base_model.parameters()).dtype
+                
+                # Detach and convert to correct dtype, then require grad
+                hidden_states = hidden_states.detach().to(dtype=model_dtype).requires_grad_(True)
+                
+                # Get attention bias
+                batch_size, seq_len = input_ids.shape
+                from models.llada.modeling_recursive_llada import get_causal_attention_bias
+                
+                attention_bias = get_causal_attention_bias(
+                    base_model._LLaDAModel__cache, seq_len, input_ids.device
+                )
+                attention_bias = attention_bias[:, :, :seq_len, :seq_len].to(dtype=model_dtype)
+                
+                # Recursive steps using forward_latent_only
+                for step in range(R):
+                    hidden_states = base_model.forward_latent_only(
+                        hidden_states=hidden_states,
+                        latent_step=step,
+                        attention_bias=attention_bias,
+                    )
+                
+                # Apply final layer norm
+                hidden_states = base_model.transformer.ln_f(hidden_states)
+                
+                # Compute logits (use unwrapped_model defined at function start)
+                if unwrapped_model.config.weight_tying:
+                    logits = F.linear(hidden_states, base_model.transformer.wte.weight, None)
+                else:
+                    logits = base_model.transformer.ff_out(hidden_states)
+                
+                if hasattr(unwrapped_model.config, 'scale_logits') and unwrapped_model.config.scale_logits:
+                    logits = logits * (1 / math.sqrt(unwrapped_model.config.d_model))
 
         B, T, V = logits.shape
 
@@ -752,7 +789,7 @@ def main():
     # global_step already initialized in resume checkpoint section
     log_interval = config.get('logging', {}).get('log_interval', 10)
     save_checkpoint_steps = config.get('checkpoint', {}).get('save_checkpoint_steps', None)
-    
+
     if save_checkpoint_steps is not None:
         logger.info(f"  Checkpoint saving enabled: every {save_checkpoint_steps} steps")
 
@@ -803,12 +840,11 @@ def main():
 
                 # Reconstruct original text by replacing masks with labels
                 original_ids = sample_input_ids.clone()
-                mask_token_id = tokenizer.encode('<|mdm_mask|>')[0]
                 original_ids[sample_pmask] = sample_labels[sample_pmask]
 
                 # Decode both masked and original
-                masked_text = tokenizer.decode(sample_input_ids, skip_special_tokens=True)
-                original_text = tokenizer.decode(original_ids, skip_special_tokens=True)
+                masked_text = tokenizer.decode(sample_input_ids, skip_special_tokens=False)
+                original_text = tokenizer.decode(original_ids, skip_special_tokens=False)
 
                 logger.info(f"\n[Masked Input (what model sees)]:\n{masked_text[:400]}...")
                 logger.info(f"\n[Original Text (ground truth)]:\n{original_text[:400]}...")
@@ -874,7 +910,7 @@ def main():
                     if use_latent_recursive and recursive_in_training:
                         writer.add_scalar('train/R', R, global_step)
                     writer.flush()  # Ensure data is written to disk
-                
+
                 # Save checkpoint at specified intervals
                 if save_checkpoint_steps is not None and global_step % save_checkpoint_steps == 0:
                     logger.info(f"Saving checkpoint at step {global_step}...")

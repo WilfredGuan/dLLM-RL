@@ -1027,10 +1027,11 @@ class LLaDAModel(nn.Module):
         super().__init__()
         self.config = config
         self.__cache = BufferCache()
-        
+
         # Store freeze configuration for latent recursive
         self.freeze_first_half_layers = False
         self.trainable_layer_start_idx = 0
+        self.recursive_start_layer_idx = 0
 
         # Validate config.
         if self.config.alibi and self.config.flash_attention:
@@ -1142,7 +1143,7 @@ class LLaDAModel(nn.Module):
         )
         if hasattr(self.transformer, "wpe"):
             init_weights(self.config, self.transformer.wpe, type_of_module=ModuleType.emb)  # type: ignore
-        
+
         # Latent step embedding
         if self.config.use_latent_recursive and hasattr(self, "latent_step_embedding"):
             nn.init.normal_(self.latent_step_embedding.weight, mean=0.0, std=0.02)
@@ -1405,41 +1406,41 @@ class LLaDAModel(nn.Module):
         """
         if not self.config.use_latent_recursive:
             raise ValueError("Latent recursive is not enabled in config")
-        
+
         # Add latent step embedding to all positions
         step_emb = self.latent_step_embedding(
             torch.tensor([latent_step], device=hidden_states.device, dtype=torch.long)
         )  # (1, d_model)
-        
+
         # Check for NaN in step embedding
         if torch.isnan(step_emb).any():
             raise ValueError(f"NaN in step_emb at latent_step={latent_step}")
-        
+
         step_emb = step_emb.unsqueeze(1)  # (1, 1, d_model)
-        
+
         # Ensure dtype matches
         if step_emb.dtype != hidden_states.dtype:
             step_emb = step_emb.to(hidden_states.dtype)
-        
+
         hidden_states = hidden_states + step_emb  # broadcast
-        
+
         # Check for NaN after adding step embedding
         if torch.isnan(hidden_states).any():
             raise ValueError(f"NaN after adding step_emb at latent_step={latent_step}")
-        
+
         # Apply dropout
         hidden_states = self.transformer.emb_drop(hidden_states)
-        
+
         # Check for NaN after dropout
         if torch.isnan(hidden_states).any():
             raise ValueError(f"NaN after dropout at latent_step={latent_step}")
-        
+
         # Apply blocks (only unfrozen layers if freeze is enabled)
         if self.config.block_group_size == 1:
             # Determine which blocks to use
             blocks = self.transformer.blocks
-            start_idx = self.trainable_layer_start_idx if self.freeze_first_half_layers else 0
-            
+            start_idx = self.recursive_start_layer_idx
+
             for i in range(start_idx, len(blocks)):
                 block = blocks[i]
                 hidden_states, _ = block(
@@ -1455,13 +1456,12 @@ class LLaDAModel(nn.Module):
             # For block groups
             block_groups = self.transformer.block_groups
             # Calculate which block group to start from
-            if self.freeze_first_half_layers:
-                # trainable_layer_start_idx is in terms of individual layers
-                # Convert to block group index
-                start_group_idx = self.trainable_layer_start_idx // self.config.block_group_size
-            else:
-                start_group_idx = 0
-            
+            # recursive_start_layer_idx is in terms of individual layers
+            # Convert to block group index
+            start_group_idx = (
+                self.recursive_start_layer_idx // self.config.block_group_size
+            )
+
             for i in range(start_group_idx, len(block_groups)):
                 block_group = block_groups[i]
                 hidden_states, _ = block_group(
@@ -1473,14 +1473,14 @@ class LLaDAModel(nn.Module):
                 # Check for NaN after each block group
                 if torch.isnan(hidden_states).any():
                     raise ValueError(f"NaN after block_group {i} at latent_step={latent_step}")
-        
+
         # Note: Do NOT apply ln_f here, as recursive should loop within trainable layers only
         # ln_f should be applied after all recursive steps are done
-        
+
         # Check for NaN after blocks
         if torch.isnan(hidden_states).any():
             raise ValueError(f"NaN after blocks at latent_step={latent_step}")
-        
+
         return hidden_states
 
 

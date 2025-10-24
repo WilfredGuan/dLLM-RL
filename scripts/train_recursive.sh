@@ -80,9 +80,13 @@ echo ""
 # Launch Training
 # ============================================
 
+# ACCELERATE_CONFIG="accelerate_configs/1_node_8_gpus_deepspeed_zero3.yaml"
+
 if [ ${NUM_GPUS} -gt 1 ]; then
     echo "Launching multi-GPU training with ${NUM_GPUS} GPUs..."
+    # accelerate launch --config_file ${ACCELERATE_CONFIG} \
     accelerate launch --num_processes=${NUM_GPUS} \
+        --mixed_precision="bf16" \
         train/sft_llada.py \
         --config ${TMP_CONFIG}
 else

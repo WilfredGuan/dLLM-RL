@@ -12,20 +12,21 @@ dataset:
 training:
     gradient_checkpointing_enable: False  # Enable to save memory
     gradient_accumulation_steps: 4  # Increase to maintain effective batch size
-    batch_size_lm: 1  # Reduce to 1 to save memory
+    batch_size_lm: 1  # Reduce to save memory with recursive training
     mixed_precision: "bf16"
     enable_tf32: False
     seed: 42
     num_train_epochs: 2
     max_grad_norm: 1
-    freeze_first_half_layers: True  # Freeze first half of transformer layers
+    freeze_first_half_layers: False  # Freeze first half of transformer layers
+    trainable_layer_start_idx: 0  # Specify which layer to start training from (null = auto-calculate as n_layers//2 if freeze_first_half_layers=True)
     
     # Masking strategy
     method: "random_masking"
     lower_p: 0.1
     upper_p: 0.9
     block_size: 32
-    mask_times_per_sample: 2
+    mask_times_per_sample: 1
     post_num: 0
     max_gen_length: 1024
     max_prompt_len: 784
@@ -34,6 +35,7 @@ training:
     use_latent_recursive: True
     R: 1 # latent recursive steps (before every unmask steps)
     recursive_in_training: True
+    recursive_start_layer_idx: 16  # Specify which layer to start recursive from (null = use trainable_layer_start_idx)
 
 optimizer:
     name: adamw
@@ -55,7 +57,7 @@ lr_scheduler:
 # Checkpoint configuration
 checkpoint:
     save_checkpoint_steps: 5000  # Save checkpoint every N steps (set to null to disable)
-    resume_from_checkpoint: sft_llada_recursive_2_epoch/ckpt/  # Path to checkpoint directory to resume training (e.g., "sft_llada_recursive/ckpt/checkpoint-5000")
+    resume_from_checkpoint: Null # sft_llada_recursive_2_epoch/ckpt/  # Path to checkpoint directory to resume training (e.g., "sft_llada_recursive/ckpt/checkpoint-5000")
 
 # Logging configuration
 logging:
