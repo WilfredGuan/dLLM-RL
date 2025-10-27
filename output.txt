@@ -1,130 +1,68 @@
-[2025-10-23 09:50:59,254] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:00,918] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:22,796] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:24,824] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
 /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/accelerate/utils/launch.py:447: UserWarning: Port `8888` is already in use. Accelerate will attempt to launch in a standalone-like mode by finding an open port automatically for this session. If this current attempt fails, or for more control in future runs, please specify a different port (e.g., `--main_process_port <your_chosen_port>`) or use `--main_process_port 0` for automatic selection in your launch command or Accelerate config file.
   warnings.warn(
-W1023 09:51:01.374000 404489 site-packages/torch/distributed/run.py:766] 
-W1023 09:51:01.374000 404489 site-packages/torch/distributed/run.py:766] *****************************************
-W1023 09:51:01.374000 404489 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
-W1023 09:51:01.374000 404489 site-packages/torch/distributed/run.py:766] *****************************************
-[2025-10-23 09:51:05,863] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:05,939] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:06,047] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:06,178] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:06,215] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:06,376] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:06,410] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:06,412] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-23 09:51:06,820] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-23 09:51:06,839] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-23 09:51:06,952] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-23 09:51:06,974] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-23 09:51:07,061] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-23 09:51:07,084] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-23 09:51:07,224] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-23 09:51:07,241] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-23 09:51:07,245] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-23 09:51:07,263] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-23 09:51:07,464] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-23 09:51:07,477] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-23 09:51:07,486] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-23 09:51:07,499] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-23 09:51:07,529] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-23 09:51:07,561] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-23 09:51:07,562] [INFO] [comm.py:852:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
-[2025-10-23 09:51:11,072] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-23 09:51:11,074] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-23 09:51:11,077] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-23 09:51:11,079] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-23 09:51:11,092] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-23 09:51:11,128] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-23 09:51:11,156] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+W1027 06:49:25.326000 534489 site-packages/torch/distributed/run.py:766] 
+W1027 06:49:25.326000 534489 site-packages/torch/distributed/run.py:766] *****************************************
+W1027 06:49:25.326000 534489 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W1027 06:49:25.326000 534489 site-packages/torch/distributed/run.py:766] *****************************************
+[2025-10-27 06:49:31,038] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:31,045] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:31,048] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:31,049] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:31,050] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:31,050] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:31,051] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:31,056] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-27 06:49:32,101] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:32,124] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-27 06:49:32,125] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:32,148] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-27 06:49:32,167] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:32,169] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:32,172] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:32,190] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-27 06:49:32,193] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-27 06:49:32,201] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-27 06:49:32,215] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:32,219] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:32,237] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-27 06:49:32,241] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-27 06:49:32,241] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-27 06:49:32,241] [INFO] [comm.py:852:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
+[2025-10-27 06:49:32,264] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-27 06:49:36,013] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-27 06:49:36,032] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-27 06:49:36,032] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-27 06:49:36,033] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-27 06:49:36,036] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-27 06:49:36,072] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-27 06:49:36,075] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
 wandb: Tracking run with wandb version 0.21.1
 wandb: W&B syncing is set to `offline` in this directory. Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
-wandb: Run data is saved locally in /mnt/shared-storage-user/gaoxin1/project/dLLM-RL/wandb/offline-run-20251023_095111-d25dtq9c
+wandb: Run data is saved locally in /mnt/shared-storage-user/gaoxin1/project/dLLM-RL/wandb/offline-run-20251027_064936-3ag4zpuu
 wandb:                                                                                
 wandb: You can sync this run to the cloud by running:
-wandb: wandb sync /mnt/shared-storage-user/gaoxin1/project/dLLM-RL/wandb/offline-run-20251023_095111-d25dtq9c
-wandb: Find logs at: ./wandb/offline-run-20251023_095111-d25dtq9c/logs
+wandb: wandb sync /mnt/shared-storage-user/gaoxin1/project/dLLM-RL/wandb/offline-run-20251027_064936-3ag4zpuu
+wandb: Find logs at: ./wandb/offline-run-20251027_064936-3ag4zpuu/logs
 wandb: Tracking run with wandb version 0.21.1
 wandb: W&B syncing is set to `offline` in this directory. Run `wandb online` or set WANDB_MODE=online to enable cloud syncing.
-wandb: Run data is saved locally in /mnt/shared-storage-user/gaoxin1/project/dLLM-RL/wandb/offline-run-20251023_095112-qsw43z1h
+wandb: Run data is saved locally in /mnt/shared-storage-user/gaoxin1/project/dLLM-RL/wandb/offline-run-20251027_064937-g31amv8s
 [Logging] Using Weights & Biases project: sft_llada_recursive2
 INFO:root:Saving config to sft_llada_recursive2/config.yaml
 INFO:__main__:Loading models and optimizer
 INFO:__main__:use_latent_recursive: True
 INFO:__main__:Loading LLaDAModelLMRecursive (with latent recursive support)
-[2025-10-23 09:51:13,006] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-23 09:51:18,467] [INFO] [partition_parameters.py:366:__exit__] finished initializing model - num_params = 291, num_elems = 8.02B
-Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.08it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.08it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.09it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.08it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.09it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.09it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.09it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.04it/s]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.14s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.14s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.14s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.14s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.14s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.14s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.15s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.16s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.25s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.25s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.25s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.25s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.25s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.25s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.25s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.26s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.27s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.27s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.27s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.27s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.27s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.27s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.27s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.27s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.29s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.29s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.29s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.29s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.29s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.29s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.29s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.29s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.18s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.20s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.18s/it]
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.18s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.18s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.18s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.20s/it]
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.20s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.20s/it]
+[2025-10-27 06:49:38,147] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-27 06:49:43,581] [INFO] [partition_parameters.py:366:__exit__] finished initializing model - num_params = 291, num_elems = 8.02B
+Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.03s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.03s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.03s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.03s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.03s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.03s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.03s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:01<00:05,  1.06s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.24s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.24s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.24s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.24s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.24s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.25s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:05,  1.26s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:05,  1.27s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:04,  1.36s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:04,  1.36s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:04,  1.36s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:04,  1.36s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:04,  1.36s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:04,  1.36s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:04,  1.36s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:04,  1.37s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:05<00:02,  1.39s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:05<00:02,  1.39s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:05<00:02,  1.39s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:05<00:02,  1.39s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:05<00:02,  1.39s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:05<00:02,  1.39s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:05<00:02,  1.39s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:05<00:02,  1.40s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.40s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.40s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.40s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.40s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.40s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.40s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.40s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.40s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.29s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.29s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.29s/it]
 
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.20s/it]
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.18s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.17s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.20s/it]
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.20s/it]
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.17s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.20s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.29s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.29s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.29s/it]
+
+Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.29s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.25s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.29s/it]
 INFO:__main__:Enabled latent recursive with max_steps=2
 INFO:__main__:Creating dataloaders and lr_scheduler
 INFO:__main__:Preprocessing data....
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-WARNING:datasets.load:Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-WARNING:datasets.packaged_modules.cache.cache:Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Thu Oct 23 09:46:08 2025).
-INFO:__main__:Preparing model, optimizer and dataloaders
-Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam/build.ninja...
-/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
-If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
-  warnings.warn(
-Building extension module cpu_adam...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-ninja: no work to do.
-Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.3587305545806885 seconds
-Adam Optimizer #0 is created with AVX512 arithmetic capability.
-Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-23 09:53:53,718] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed info: version=0.17.4, git-hash=unknown, git-branch=unknown
-[2025-10-23 09:53:53,718] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam/build.ninja...
-/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
-If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
-  warnings.warn(
-Building extension module cpu_adam...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-ninja: no work to do.
-Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.3752167224884033 seconds
-Adam Optimizer #0 is created with AVX512 arithmetic capability.
-Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-23 09:53:53,734] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam/build.ninja...
-/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
-If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
-  warnings.warn(
-Building extension module cpu_adam...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-ninja: no work to do.
-Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.441864490509033 seconds
-Adam Optimizer #0 is created with AVX512 arithmetic capability.
-Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-23 09:53:54,053] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8

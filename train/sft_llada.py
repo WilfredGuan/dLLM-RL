@@ -17,6 +17,7 @@ from omegaconf import OmegaConf
 import torch
 from torch import nn
 from torch.optim import AdamW
+from tqdm import tqdm
 
 from transformers import AutoTokenizer
 from accelerate import Accelerator
@@ -146,9 +147,9 @@ def main():
     logger.info("Loading models and optimizer")
 
     tokenizer = AutoTokenizer.from_pretrained(pretrained_model)
-    uni_prompting = UniversalPrompting(tokenizer, max_prompt_len=config.training.max_prompt_len,
-                                       max_gen_length=config.training.max_gen_length,
-                                       ignore_id=-100)
+    # uni_prompting = UniversalPrompting(tokenizer, max_prompt_len=config.training.max_prompt_len,
+    #                                    max_gen_length=config.training.max_gen_length,
+    #                                    ignore_id=-100)
 
     # Choose model class based on config
     use_latent_recursive = config.training.get('use_latent_recursive', False)
@@ -355,12 +356,11 @@ def main():
 
         return loss_lm
 
-    from tqdm.auto import tqdm
 
     global_step = 0
     log_interval = config.get('logging', {}).get('log_interval', 10)
 
-    for epoch in range(first_epoch, num_train_epochs):
+    for epoch in tqdm(range(first_epoch, num_train_epochs)):
 
         model.train()
 
@@ -379,23 +379,20 @@ def main():
 
             data_time_m.update(time.time() - end)
 
-            noisy_batch, labels, p_mask_lm = prepare_inputs_and_labels_for_token_ids(batch["input_ids"], batch["prompt_len"], mask_id)
+            noisy_batch, labels, p_mask_lm = prepare_inputs_and_labels_for_token_ids(batch["input_ids"], batch["prompt_len"], mask_id, pad_id, post_num=config.training.post_num)
 
             noisy_batch = noisy_batch.to(accelerator.device)
             labels    = labels.to(accelerator.device)
             p_mask_lm = p_mask_lm.to(accelerator.device)
 
+            # # Decode both masked and original
+            # for i in range(len(noisy_batch)):
+            #     masked_text = tokenizer.decode(noisy_batch[i], skip_special_tokens=False)
+            #     label_text = tokenizer.decode(labels[i], skip_special_tokens=False)
 
-            # Debug: Print prompt/response for first 5 steps
-            if step % 50 ==0 and accelerator.is_main_process:
-                logger.info(f"\n{'='*80}")
-                logger.info(f"[DEBUG] Step {step} - Input Inspection")
-                logger.info(f"{'='*80}")
-
-                # Get batch info
-                batch_size = noisy_batch.shape[0]
-                seq_len = noisy_batch.shape[1]
-                logger.info(f"Batch size: {batch_size}, Sequence length: {seq_len}")
+            #     logger.info(f"\n[Masked Input (what model sees)]:\n{masked_text}")
+            #     logger.info(f"\n[Original Text (ground truth)]:\n{label_text}")
+            #     logger.info(f"\n[Mask]:\n{p_mask_lm[i]}")
 
             loss_lm = forward_process(
                     input_ids=noisy_batch,
@@ -407,7 +404,20 @@ def main():
             loss_lm = loss_lm / accelerator.gradient_accumulation_steps
 
             # print(loss_lm)
-            logger.info(f"Step {step} Loss: {loss_lm}")
+            # Debug: Print prompt/response for first 5 steps
+            if step % 50 ==0 and accelerator.is_main_process:
+                logger.info(f"\n{'='*80}")
+                logger.info(f"[DEBUG] Step {step} - Input Inspection")
+                logger.info(f"{'='*80}")
+
+                # Get batch info
+                batch_size = noisy_batch.shape[0]
+                seq_len = noisy_batch.shape[1]
+                logger.info(f"Batch size: {batch_size}, Sequence length: {seq_len}")
+
+                logger.info(f"Step {step} Loss: {loss_lm}")
+
+
             accelerator.backward(loss_lm)
 
             if (step + 1) % accelerator.gradient_accumulation_steps == 0:
@@ -436,12 +446,12 @@ def main():
 
         # Save checkpoint at the end of each epoch with epoch and global_step in the filename
         checkpoint_name = f"checkpoint-epoch{epoch+1}-step{global_step}"
-        # save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name)
+        save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name)
 
     accelerator.wait_for_everyone()
 
     # save checkpoint at the end of training
-    # save_checkpoint(model, tokenizer, config, accelerator, config.model.optimized_name)
+    save_checkpoint(model, tokenizer, config, accelerator, config.model.optimized_name)
 
     accelerator.end_training()
 

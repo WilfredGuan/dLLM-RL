@@ -50,9 +50,99 @@ class DiffusionOutput:
     nfe:       int
 
 
+@torch.no_grad()
+def generate_with_prefix_cache1(
+        model, prompt,
+        steps, gen_length, block_length, temperature,
+        target, mask_id, further_horizon, use_cache, unmask_threshold
+    ) -> DiffusionOutput:
+
+    cgws = further_horizon
+    B, L0 = prompt.shape
+    x = torch.full((B, L0 + gen_length), mask_id, dtype=torch.long, device=prompt.device)
+    max_length = L0 + gen_length
+    x[:, :L0] = prompt
+    assert gen_length % block_length == 0
+    num_blocks = gen_length // block_length
+    base, rem = divmod(steps, num_blocks)
+    steps_per_block = [base + (i < rem) for i in range(num_blocks)]
+
+    nfe = 0
+    hist: List[torch.Tensor] = []
+
+    for blk in range(num_blocks):
+        s, e = L0 + blk * block_length, L0 + (blk + 1) * block_length
+
+        if cgws is not None:
+            window_end  = max_length if cgws is None else min(e + cgws, max_length)
+            window_slice = slice(s, window_end)
+        
+        cur_steps = steps_per_block[blk]
+        num_transfer = get_num_transfer_tokens((x[:, s:e] == mask_id), cur_steps)
+
+        # first full forward to build prefix cache
+        if use_cache:
+            out = model(x, use_cache=True)
+            pkv = out.past_key_values
+            # chop prefix out of past_kv to keep cache small
+            new_pkv = tuple(
+                tuple(t[:, :, :s] for t in layer) for layer in pkv
+            )
+            pkv = new_pkv
+        else:
+            out = model(x, use_cache=False)
+        
+        mask_all = (x == mask_id)
+        mask_all[:, e:] = 0
+
+        x0, tr_idx = get_transfer_index(
+            out.logits, temperature, target, mask_all,
+            x, num_transfer[:, 0], unmask_threshold)
+        x[tr_idx] = x0[tr_idx]
+        hist.append(x.clone().cpu())
+        nfe += 1
+
+        i = 1
+        while True:
+            nfe += 1
+            if cgws is not None:
+                mask_blk = (x[:, window_slice] == mask_id)
+            else:
+                mask_blk = (x[:, s:] == mask_id)
+            mask_blk[:, block_length:] = 0
+
+            if use_cache:
+                if cgws is not None:
+                    logits = model(x[:, window_slice], past_key_values=pkv, use_cache=True).logits
+                    x0, tr_idx = get_transfer_index(
+                        logits, temperature, target,
+                        mask_blk, x[:, window_slice], num_transfer[:, i], unmask_threshold)
+                    x[:, window_slice][tr_idx] = x0[tr_idx]
+                else:
+                    logits = model(x[:, s:], past_key_values=pkv, use_cache=True).logits
+                    x0, tr_idx = get_transfer_index(
+                        logits, temperature, target,
+                        mask_blk, x[:, s:], num_transfer[:, i], unmask_threshold)
+                    x[:, s:][tr_idx] = x0[tr_idx]
+            else:
+                logits = model(x, use_cache=False).logits
+                logits = logits[:, s:]
+                x0, tr_idx = get_transfer_index(
+                    logits, temperature, target,
+                    mask_blk, x[:, s:], num_transfer[:, i], unmask_threshold)
+                x[:, s:][tr_idx] = x0[tr_idx]
+            
+            hist.append(x.clone().cpu())
+
+            if (x[:, s:e] == mask_id).sum() == 0:
+                break
+            i += 1
+
+    return DiffusionOutput(sequences=x, history=hist, nfe=nfe)
+
 
 @torch.no_grad()
-def generate_with_prefix_cache(
+def generate_with_prefix_cache2(
         model, prompt,
         gen_length, block_length, latent_recursive_steps, unmask_token_number_per_step, temperature, 
         target, mask_id, further_horizon, use_cache, unmask_threshold, rank
@@ -214,7 +304,10 @@ def get_prompt(data_i):
 
 
 def extract_final_boxed_answer(s: str):
-    s = s.split('<|eot_id|>')[0]
+    if '<|eot_id|>' in s:
+        s = s.split('<|eot_id|>')[0]
+    elif '<|endoftext|>' in s:
+        s = s.split('<|endoftext|>')[0]
     tag = r'\boxed{'
     start = s.rfind(tag)          # last \boxed{
     if start == -1:
@@ -270,8 +363,8 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         from llada.configuration_llada import LLaDAConfig
 
         model_config = LLaDAConfig.from_pretrained(pretrained_model)
-        model_config.use_cache = True  # Enable KV cache
-        model_config.use_latent_recursive = True
+        model_config.use_cache = config.rollout.use_cache  
+        model_config.use_latent_recursive = config.model.use_latent_recursive
         model_config.max_latent_recursive_steps = latent_recursive_steps
 
         model_gpu = (LLaDAModelLMRecursive
@@ -322,16 +415,27 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         unmask_token_number_per_step = config.rollout.get('unmask_token_number_per_step', 1)
 
         # generate_with_prefix_cache
-        out = generate_with_prefix_cache(
-            model_gpu, input_ids,
-            gen_length=config.rollout.max_gen_length,
-            block_length=config.rollout.block_size, latent_recursive_steps=latent_recursive_steps, 
-            unmask_token_number_per_step=unmask_token_number_per_step,
-            temperature=config.rollout.temperature,
-            target=config.rollout.target, mask_id=mask_id, further_horizon=config.rollout.further_horizon,
-            use_cache=config.rollout.use_cache, unmask_threshold=unmask_threshold,
-            rank=rank
-        )
+        if config.model.use_latent_recursive:
+            out = generate_with_prefix_cache2(
+                model_gpu, input_ids,
+                gen_length=config.rollout.max_gen_length,
+                block_length=config.rollout.block_size, latent_recursive_steps=latent_recursive_steps, 
+                unmask_token_number_per_step=unmask_token_number_per_step,
+                temperature=config.rollout.temperature,
+                target=config.rollout.target, mask_id=mask_id, further_horizon=config.rollout.further_horizon,
+                use_cache=config.rollout.use_cache, unmask_threshold=unmask_threshold,
+                rank=rank
+            )
+        else:
+            print("正常forward")
+            out = generate_with_prefix_cache1(
+                model_gpu, input_ids,
+                steps=config.rollout.steps, gen_length=config.rollout.max_gen_length,
+                block_length=config.rollout.block_size, temperature=config.rollout.temperature,
+                target=config.rollout.target, mask_id=mask_id, further_horizon=config.rollout.further_horizon,
+                use_cache=config.rollout.use_cache, unmask_threshold = unmask_threshold
+            )
+
         out.sequences = out.sequences.cpu()
         torch.cuda.empty_cache()
 
@@ -382,7 +486,7 @@ if __name__ == "__main__":
     
     project_name = config.experiment.project
     
-    system_prompts = """<|startoftext|><|start_header_id|>user<|end_header_id|>\nThis is the problem:\n{{problem}}\nYou need to put your final answer in \\boxed{}. <|eot_id|><|startoftext|><|start_header_id|>assistant<|end_header_id|>\n"""
+    system_prompts = """<|startoftext|><|start_header_id|>user<|end_header_id|>\nThis is the problem:\n{{problem}}\nYou need to put your final answer in \\boxed{}.<|eot_id|><|startoftext|><|start_header_id|>assistant<|end_header_id|>\n"""
     
     code_eval = False
     
@@ -540,7 +644,7 @@ if __name__ == "__main__":
             extracted_output = extract_final_boxed_answer(full_output)
         index_i = index_list[i]
         data[index_i]["full_output"].append(full_output)
-        data[index_i]["step_map"].append(restored_step_maps[i])
+        # data[index_i]["step_map"].append(restored_step_maps[i])
         data[index_i]["extracted_output"].append(extracted_output)
         data[index_i]["response_length"].append(response_length[i])
         i += 1

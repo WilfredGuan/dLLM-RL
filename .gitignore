@@ -3,5 +3,6 @@
 /sft_llada_recursive2/
 *.json
 output.txt
+output2.txt
 eval.txt
 /wandb/
