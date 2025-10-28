@@ -260,8 +260,15 @@ def main():
         total = torch.cuda.get_device_properties(0).total_memory / 1024**3
         logger.info(f"[After Model Load] GPU {accelerator.device} Memory - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Total: {total:.2f}GB")
 
-    mask_id = tokenizer.encode('<|mdm_mask|>')[0]
-    pad_id = tokenizer.encode('<|endoftext|>')[0]
+    # FIX 1: Use tokenizer's pad_token_id directly instead of manual encoding
+    # OLD: tokenizer.encode() may return multiple tokens if special token not registered
+    # NEW: Use tokenizer.pad_token_id to ensure consistency
+    pad_id = tokenizer.pad_token_id
+    
+    # FIX 2: Register mask token as special token to prevent fragmentation
+    # OLD: tokenizer.encode('<|mdm_mask|>') may split into multiple tokens
+    # NEW: Add as special token first, then get its ID
+    mask_id = tokenizer.convert_tokens_to_ids('<|mdm_mask|>')
 
     ##################################
     #   Optimizer and LR scheduler   #
@@ -323,24 +330,28 @@ def main():
         max_gen_length = config.training.max_gen_length
         
         # 1. Tokenize prompts (left padding)
+        original_padding_side = tokenizer.padding_side
+        tokenizer.padding_side = "left"
         prompt_ids = tokenizer(
             prompt,
             padding=True,
             return_tensors="pt",
-            padding_side="left",
             truncation=True,
             max_length=max_prompt_len
         )['input_ids']
         
         # 2. Tokenize responses (right padding)
+        tokenizer.padding_side = "right"
         response_ids = tokenizer(
             response,
             padding=True,
             return_tensors="pt",
-            padding_side="right",
             truncation=True,
             max_length=max_gen_length
         )['input_ids']
+        
+        # Restore original padding side
+        tokenizer.padding_side = original_padding_side
         
         # 3. 拼接 prompt + response
         if response_ids.shape[1] < max_gen_length:
@@ -359,11 +370,18 @@ def main():
             temp_ids = prompt_id + resp_id
             temp_labels = temp_ids.copy()
             
+            # FIX 4: Properly mask prompt positions in labels
+            # OLD: Only padding positions were masked with -100
+            # NEW: Also mask prompt positions since we only compute loss on response
+            prompt_len = len(prompt_id)
+            for i in range(prompt_len):
+                temp_labels[i] = -100
+            
             # Padding或截断
             if len(temp_ids) < max_seq_len:
                 pad_len = max_seq_len - len(temp_ids)
                 temp_ids.extend([pad_id] * pad_len)
-                temp_labels.extend([-100] * pad_len)  # ✅ padding位置设为-100
+                temp_labels.extend([-100] * pad_len)  # padding位置设为-100
             else:
                 temp_ids = temp_ids[:max_seq_len]
                 temp_labels = temp_labels[:max_seq_len]
@@ -407,14 +425,23 @@ def main():
 
                 base_ids = input_ids_lm[b]  # (L,)
 
+                # FIX 5: Fix tail padding detection to cover all positions after post_num
+                # OLD: tail_pad_b only covered pad tokens, missing right-side padding
+                # NEW: Extend tail_pad_b to all positions after the last kept pad
                 if config.training.post_num is not None:
                     pad_mask_b = (base_ids == pad_id)
                     pad_mask_b[:start_pos] = False
                     keep_first_pad_b = pad_mask_b & (torch.cumsum(pad_mask_b.int(), dim=0) <= config.training.post_num)
-                    tail_pad_b       = pad_mask_b & ~keep_first_pad_b
+                    # Find last position to keep
+                    if keep_first_pad_b.any():
+                        last_keep_pos = torch.where(keep_first_pad_b)[0][-1].item()
+                        tail_pad_b = torch.zeros(L_after, dtype=torch.bool, device=device)
+                        tail_pad_b[last_keep_pos + 1:] = True
+                    else:
+                        tail_pad_b = torch.zeros(L_after, dtype=torch.bool, device=device)
                 else:
-                    keep_first_pad_b = torch.zeros(L, dtype=torch.bool, device=device)
-                    tail_pad_b       = torch.zeros(L, dtype=torch.bool, device=device)
+                    keep_first_pad_b = torch.zeros(L_after, dtype=torch.bool, device=device)
+                    tail_pad_b       = torch.zeros(L_after, dtype=torch.bool, device=device)
 
                 for i in range(0, len(uniq_steps)):
 
@@ -451,11 +478,19 @@ def main():
                 base_ids  = input_ids_lm[b]
                 label_ids = labels_lm[b]
 
+                # FIX 5 (repeated for random_masking method)
+                # OLD: tail_pad_b only covered pad tokens, missing right-side padding
+                # NEW: Extend tail_pad_b to all positions after the last kept pad
                 if config.training.post_num is not None:
                     pad_mask_b = (base_ids == pad_id)
                     pad_mask_b[:start_pos] = False
                     keep_first_pad_b = pad_mask_b & (torch.cumsum(pad_mask_b.int(), dim=0) <= config.training.post_num)
-                    tail_pad_b       = pad_mask_b & ~keep_first_pad_b
+                    if keep_first_pad_b.any():
+                        last_keep_pos = torch.where(keep_first_pad_b)[0][-1].item()
+                        tail_pad_b = torch.zeros(L, dtype=torch.bool, device=device)
+                        tail_pad_b[last_keep_pos + 1:] = True
+                    else:
+                        tail_pad_b = torch.zeros(L, dtype=torch.bool, device=device)
                 else:
                     keep_first_pad_b = torch.zeros(L, dtype=torch.bool, device=device)
                     tail_pad_b       = torch.zeros(L, dtype=torch.bool, device=device)

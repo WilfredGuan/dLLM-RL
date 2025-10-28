@@ -25,7 +25,7 @@ training:
     seed: 10086
     num_train_epochs: 1
     max_grad_norm: 1
-    method: "random_masking" # "random_masking""semi-ar"
+    method: "semi-ar" # "random_masking""semi-ar"
     lower_p: 0.1
     upper_p: 0.9
     block_size: 16 # use for semi-ar

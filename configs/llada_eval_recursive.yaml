@@ -4,7 +4,8 @@ experiment:
     node_index: 0 # no need to change
 
 
-model_path: "/geminicephfs/game-center-recmd/wilfredguan/dLLM-RL/sft_llada_recursive/ckpt/checkpoint-15000" # absolute path of your model
+# model_path: "/geminicephfs/game-center-recmd/wilfredguan/dLLM-RL/sft_llada_recursive/ckpt/checkpoint-15000" # absolute path of your model
+model_path: "/geminicephfs/game-center-recmd/wilfredguan/dLLM-RL/sft_llada_recursive/ckpt/checkpoint-20000"
 model_base: "llada" # set llada for LLaDA and MMaDA
 model:
     freeze_first_half_layers: True  # Set to True if model was trained with frozen first half layers
@@ -21,9 +22,9 @@ execute:
 rollout:
     num_response_per_task: 1
     temperature: 1.0
-    max_gen_length: 1024
+    max_gen_length: 512
     batch_size: 1
-    remasking_strategy: "low_confidence_dynamic" #"low_confidence_static""low_confidence_dynamic"
+    remasking_strategy: "low_confidence_static" #"low_confidence_static""low_confidence_dynamic"
     target: "confidence" # target to decide which tokens to unmask, eg. confidence, margin_confidence and neg_entropy
     dynamic_threshold: null #0.95 # no use for "low_confidence_static"
     further_horizon: 128 # We find that performing the forward pass with a further horizon, eg. 128, (kv-cache sequence before current block, while doing full forward for currect [block_size + further_horizon] length sequence) yields competitive performance to running without KV-cache. Balances speed and performance.
