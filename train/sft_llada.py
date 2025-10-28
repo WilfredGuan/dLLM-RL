@@ -310,7 +310,7 @@ def main():
     if use_latent_recursive and recursive_in_training:
         logger.info(f"  Latent Recursive Training: R={R} (latent thinking steps)")
 
-    def forward_process(input_ids, labels, p_mask_lm, H_cycles, L_cycles):
+    def forward_process(input_ids, labels, p_mask, answer_len, H_cycles, L_cycles, mask_id):
         """
         Forward process with optional latent recursive.
         Training uses R steps of latent thinking, then computes loss directly.
@@ -330,31 +330,42 @@ def main():
 
         # Compute loss (same for both modes)
         # Clamp logits to prevent overflow in softmax
-        logits = torch.clamp(logits, min=-1e4, max=1e4)
+        # logits = torch.clamp(logits, min=-1e4, max=1e4)
 
-        log_probs = F.log_softmax(logits, dim=-1)   # (B, T, V)
+        # log_probs = F.log_softmax(logits, dim=-1)   # (B, T, V)
 
-        # NaN check for log_probs
-        if torch.isnan(log_probs).any():
-            logger.error(f"NaN in log_probs! Logits stats - min: {logits.min()}, max: {logits.max()}")
-            raise ValueError("NaN in log_probs")
+        # # NaN check for log_probs
+        # if torch.isnan(log_probs).any():
+        #     logger.error(f"NaN in log_probs! Logits stats - min: {logits.min()}, max: {logits.max()}")
+        #     raise ValueError("NaN in log_probs")
 
-        safe_labels = labels.clone()
-        safe_labels[labels == -100] = 0
-        logp_tok  = log_probs.gather(dim=-1, index=safe_labels.unsqueeze(-1)).squeeze(-1)     # (B, T)
-        loss_lm = - (logp_tok * p_mask_lm).sum(dim=1)
+        # safe_labels = labels.clone()
+        # safe_labels[labels == -100] = 0
+        # logp_tok  = log_probs.gather(dim=-1, index=safe_labels.unsqueeze(-1)).squeeze(-1)     # (B, T)
+        # loss_lm = - (logp_tok * p_mask_lm).sum(dim=1)
 
-        mask_num = (p_mask_lm).sum(dim=1).clamp(min=1)
-        loss_lm = loss_lm / mask_num
+        # mask_num = (p_mask_lm).sum(dim=1).clamp(min=1)
+        # loss_lm = loss_lm / mask_num
 
-        loss_lm = loss_lm.sum() / B
+        # loss_lm = loss_lm.sum() / B
 
+        masked_indices = input_ids == mask_id
+
+        loss_lm = F.cross_entropy(
+            logits[masked_indices].contiguous().view(-1, logits.shape[-1]),
+            labels[masked_indices].contiguous().view(-1),
+            ignore_index=-100,
+            reduction='none'
+        ) / p_mask[masked_indices]
+
+        loss_lm = torch.sum(loss_lm / answer_len[masked_indices]) / B
+    
         # Final NaN check
         if torch.isnan(loss_lm):
             logger.error(f"NaN in final loss!")
             raise ValueError("NaN in final loss")
 
-        return loss_lm
+        return loss_lm, logits
 
 
     global_step = 0
@@ -364,44 +375,77 @@ def main():
 
         model.train()
 
-        # progress_bar = tqdm(
-        #     train_dataloader_lm,
-        #     desc=f"Epoch {epoch+1}/{num_train_epochs}",
-        #     disable=not accelerator.is_local_main_process,
-        #     dynamic_ncols=True,    
-        #     leave=True          
-        # )
+        progress_bar = tqdm(
+            train_dataloader_lm,
+            desc=f"Epoch {epoch+1}/{num_train_epochs}",
+            disable=not accelerator.is_local_main_process,
+            dynamic_ncols=True,    
+            leave=True          
+        )
 
-        # for step, batch in enumerate(progress_bar, start=1):
-        for step, batch in enumerate(train_dataloader_lm):
+        for step, batch in enumerate(progress_bar, start=1):
+        # for step, batch in enumerate(train_dataloader_lm):
 
             # for loss calculation
 
             data_time_m.update(time.time() - end)
 
-            noisy_batch, labels, p_mask_lm = prepare_inputs_and_labels_for_token_ids(batch["input_ids"], batch["prompt_len"], mask_id, pad_id, post_num=config.training.post_num)
+            noisy_batch, labels, p_mask, answer_len = prepare_inputs_and_labels_for_token_ids(batch["input_ids"], batch["prompt_len"], mask_id, pad_id, post_num=config.training.post_num)
 
             noisy_batch = noisy_batch.to(accelerator.device)
             labels    = labels.to(accelerator.device)
-            p_mask_lm = p_mask_lm.to(accelerator.device)
+            rand_mask = noisy_batch == mask_id
 
-            # # Decode both masked and original
-            # for i in range(len(noisy_batch)):
-            #     masked_text = tokenizer.decode(noisy_batch[i], skip_special_tokens=False)
-            #     label_text = tokenizer.decode(labels[i], skip_special_tokens=False)
-
-            #     logger.info(f"\n[Masked Input (what model sees)]:\n{masked_text}")
-            #     logger.info(f"\n[Original Text (ground truth)]:\n{label_text}")
-            #     logger.info(f"\n[Mask]:\n{p_mask_lm[i]}")
-
-            loss_lm = forward_process(
+            loss_lm, logits = forward_process(
                     input_ids=noisy_batch,
                     labels=labels,
-                    p_mask_lm=p_mask_lm,
+                    p_mask=p_mask,
+                    answer_len=answer_len,
                     H_cycles=R,
-                    L_cycles=R
+                    L_cycles=R,
+                    mask_id=mask_id
                 )
             loss_lm = loss_lm / accelerator.gradient_accumulation_steps
+
+            # =============================
+            # 打印第一个样本的预测结果
+            # =============================
+            if accelerator.is_main_process and step % 100 == 0:  # 每100步打印一次
+                with torch.no_grad():
+                    # 取第一个样本
+                    sample_idx = 0
+                    sample_logits = logits[sample_idx]  # shape: [L, vocab_size]
+                    sample_input  = noisy_batch[sample_idx]
+                    sample_label  = labels[sample_idx]
+
+                    # 取预测token：argmax或top-k采样
+                    pred_ids = torch.argmax(sample_logits, dim=-1)  # [L]
+                    # 如果希望更平滑，可用topk采样：
+                    # probs = torch.softmax(sample_logits, dim=-1)
+                    # pred_ids = torch.multinomial(probs, num_samples=1).squeeze(-1)
+
+                    # 解码文本
+                    input_text  = tokenizer.decode(sample_input, skip_special_tokens=False)
+                    label_text  = tokenizer.decode(sample_label, skip_special_tokens=False)
+                    pred_text   = tokenizer.decode(pred_ids, skip_special_tokens=False)
+
+                    # 美化打印
+                    import textwrap
+                    def pretty_print_text(title, text, width=100):
+                        wrapped = "\n".join(textwrap.wrap(text, width))
+                        logger.info(f"\n[{title}]:\n{wrapped}\n")
+
+                    pretty_print_text("Masked Input (model sees)", input_text)
+                    pretty_print_text("Ground Truth", label_text)
+                    pretty_print_text("Predicted Output", pred_text)
+
+                    # 可选：计算mask区域预测准确率
+                    rand_mask = (sample_input == mask_id)
+                    correct = (pred_ids == sample_label) & rand_mask
+                    acc = correct.sum().item() / (rand_mask.sum().item() + 1e-6)
+                    logger.info(f"[Mask region acc] {acc * 100:.2f}% "
+                                f"({correct.sum().item()}/{rand_mask.sum().item()})")
+
 
             # print(loss_lm)
             # Debug: Print prompt/response for first 5 steps
@@ -441,7 +485,7 @@ def main():
 
                 global_step += 1
 
-                del noisy_batch, labels, p_mask_lm
+                del noisy_batch, labels, p_mask, answer_len
                 torch.cuda.empty_cache()
 
         # Save checkpoint at the end of each epoch with epoch and global_step in the filename

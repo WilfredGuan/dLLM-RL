@@ -1,5 +1,5 @@
 experiment:
-    project: "sft_llada_recursive2"
+    project: "sft_llada_recursive3"
     num_node: 1
 
 debug: False

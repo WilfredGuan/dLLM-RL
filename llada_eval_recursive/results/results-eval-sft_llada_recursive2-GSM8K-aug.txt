@@ -1,8 +1,0 @@
-acc: 0.3203125
-avg length: 222.0625
-acc: 0.2109375
-avg length: 267.5859375
-acc: 0.203125
-avg length: 265.3515625
-acc: 0.140625
-avg length: 237.3515625

@@ -4,7 +4,7 @@ experiment:
     node_index: 0 # no need to change
 
 model:
-    model_path: "/mnt/shared-storage-user/gaoxin1/project/dLLM-RL/sft_llada_recursive2/ckpt/checkpoint-epoch20-step1880" # absolute path of your model
+    model_path: "/mnt/shared-storage-user/gaoxin1/project/dLLM-RL/sft_llada_recursive2/ckpt/checkpoint-epoch11-step1034" # absolute path of your model
     model_base: "llada" # set llada for LLaDA and MMaDA
     # Latent Recursive parameters
     use_latent_recursive: True
@@ -21,7 +21,7 @@ execute:
 rollout:
     num_response_per_task: 1
     temperature: 0.1
-    max_gen_length: 512
+    max_gen_length: 1024
     steps: 512
     batch_size: 1
     remasking_strategy: "low_confidence_static" #"low_confidence_static""low_confidence_dynamic"
@@ -37,7 +37,7 @@ rollout:
     # Each normal forward step unmasks unmask_token_number_per_step tokens
     
     R: 2                              # Number of latent thinking steps per cycle
-    unmask_token_number_per_step: 4  # Number of tokens to unmask per forward step
+    unmask_token_number_per_step: 1  # Number of tokens to unmask per forward step
     block_size: 8                    # Total tokens processed per block
                                       # Constraint: block_size must be divisible by (N * unmask_token_number_per_step)
     

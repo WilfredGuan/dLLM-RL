@@ -177,12 +177,15 @@ def prepare_inputs_and_labels_for_token_ids(
     # (2) Optional tail pad handling
     if post_num is not None:
         pad_mask_b = (input_ids == pad_id)
-        pad_mask_b[:, :prompt_len[0]] = False   # 一个batch的promt_len是相同的，left pad了
+        for i in range(b):
+            pad_mask_b[i, :prompt_len[i]] = False
         cumsum_pad = torch.cumsum(pad_mask_b.int(), dim=1)
         keep_first_pad_b = pad_mask_b & (cumsum_pad <= post_num)
         tail_pad_b = pad_mask_b & ~keep_first_pad_b
     else:
         tail_pad_b = torch.zeros((b, l), dtype=torch.bool, device=device)
+    
+    maskable = maskable & ~tail_pad_b
 
     # (3) Random mask probability per sample
     times = (1 - eps) * torch.rand((b, 1), device=device) + eps
@@ -190,36 +193,44 @@ def prepare_inputs_and_labels_for_token_ids(
 
     # (4) Sample mask positions
     rand_mask = (torch.rand((b, l), device=device) < p_mask) & maskable
-    rand_mask = rand_mask & ~tail_pad_b
 
-    # (5) Guarantee each sample has at least one mask
+    # (5) Guarantee each sample has at least one masked position (Optional, I think it will converge faster)
+    # 如果某个样本所有token都没有mask，我选择把它反转，即所有回答都mask，而不是while true的方式
+    p_mask_new = p_mask.clone()
     all_zero = ~(rand_mask.any(dim=1))
     if all_zero.any():
-        rand_mask[all_zero] = maskable[all_zero] & (~tail_pad_b[all_zero])
-        # 直接把 maskable 区域全 mask 掉（全1）
+        # 全mask掉maskable区域（排除tail_pad）
+        rand_mask[all_zero] = maskable[all_zero]
+        # 对这些样本，p_mask 也需要设成1.0（表示全部mask）
+        p_mask_new[all_zero] = maskable[all_zero].float()
 
     # (6) Replace masked tokens with mask_id
     noisy_batch = torch.where(rand_mask, torch.tensor(mask_id, device=device), input_ids)
 
-    return noisy_batch.long(), labels_lm.long(), rand_mask
+    answer_lengths = l - prompt_len[:, None]
+    answer_lengths = answer_lengths.repeat(1, noisy_batch.shape[1])
+
+
+    # NaN check for embeddings
+    if torch.isnan(noisy_batch).any():
+        print(f"NaN detected in noisy_batch!")
+        raise ValueError("NaN in noisy_batch")
+
+    return noisy_batch.long(), labels_lm.long(), p_mask_new, answer_lengths
 
 
 def make_collate_fn_pad(pad_id):
     def collate_fn(batch):
-        prompt_ids = [torch.tensor(example["prompt_ids"]) for example in batch]
-        target_ids = [torch.tensor(example["target_ids"]) for example in batch]
+        prompt_lens = [len(example["prompt_ids"]) for example in batch]
+        input_ids = [torch.tensor(example["prompt_ids"]+example["target_ids"]) for example in batch]
 
-        prompt_ids_padded = torch.nn.utils.rnn.pad_sequence(prompt_ids, batch_first=True, padding_side='left', padding_value=pad_id)
-        target_ids_padded = torch.nn.utils.rnn.pad_sequence(target_ids, batch_first=True, padding_side='right', padding_value=pad_id)
-        input_ids_padded = torch.cat([prompt_ids_padded, target_ids_padded], dim=1)
+
+        input_ids_padded = torch.nn.utils.rnn.pad_sequence(input_ids, batch_first=True, padding_side='right', padding_value=pad_id)
 
         tail_padding = torch.full((input_ids_padded.size(0), 8), pad_id, dtype=torch.long)
         input_ids_padded = torch.cat([input_ids_padded, tail_padding], dim=1)
 
-        batch_prompt_len = prompt_ids_padded.size(1)
-
-        prompt_lens = [batch_prompt_len for _ in batch]
-        prompt_lens_tensor = torch.tensor(prompt_lens, dtype=torch.long)   # 这里是包含了prompt里的pad的，每个batch内部是一样的
+        prompt_lens_tensor = torch.tensor(prompt_lens, dtype=torch.long)
 
         output = {
             "input_ids": input_ids_padded,

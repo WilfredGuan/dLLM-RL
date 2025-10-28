@@ -1610,13 +1610,19 @@ class LLaDAModelLM(PreTrainedModel):
             raise ValueError("output_attentions is not yet supported in LLaDA")
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        
+        # NaN check for embeddings
+        if torch.isnan(input_ids).any():
+            print(f"NaN detected in input_ids")
+            raise ValueError("NaN in embeddings")
 
         # 1. Get initial hidden states
         hidden_states = self.model._input_embedding(input_ids)
 
         # NaN check for embeddings
         if torch.isnan(hidden_states).any():
-            logger.error(f"NaN detected in initial embeddings!")
+            print(f"NaN detected in initial embeddings!")
+            print(input_ids)
             raise ValueError("NaN in embeddings")
 
         # 2. Get attention bias
@@ -1674,7 +1680,7 @@ class LLaDAModelLM(PreTrainedModel):
 
         # NaN check for final step
         if torch.isnan(hidden_states).any():
-            logger.error(f"NaN detected at final outerloop")
+            print(f"NaN detected at final outerloop")
             raise ValueError(f"NaN at final latent step")
 
 
@@ -1689,7 +1695,7 @@ class LLaDAModelLM(PreTrainedModel):
 
         # NaN check for logits
         if torch.isnan(logits).any():
-            logger.error(f"NaN detected in logits!")
+            print(f"NaN detected in logits!")
             raise ValueError("NaN in logits")
 
         new_carry = InnerCarry(z_H=hidden_states.detach(), z_L=z_L.detach())
