@@ -8,9 +8,7 @@ model:
     pretrained_model: "/mnt/shared-storage-user/formalverification-shared/gaoxin/models/LLaDA-8B-Instruct"
     optimized_name: "optimized_recursive"
 
-dataset:
-    train_data: "gsm8k_aug_nl"
-    validation_data: "gsm8k_aug_nl"
+dataset: "gsm8k_aug_nl"
 
 training:
     gradient_checkpointing_enable: False  # Enable to save memory
@@ -60,3 +58,4 @@ logging:
     backend: "wandb"   # 可选: "wandb" | "tensorboard" | "none"
     log_dir: "tensorboard_logs"
     log_interval: 5
+    eval_interval: 100

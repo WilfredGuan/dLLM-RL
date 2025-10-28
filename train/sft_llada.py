@@ -231,10 +231,11 @@ def main():
     #################################
     logger.info("Creating dataloaders and lr_scheduler")
 
-    dataset_name = config.dataset.train_data
+    dataset_name = config.dataset
     if dataset_name == 'gsm8k_aug_nl':
         logger.info("Preprocessing data....")
         dataset_load = sft_preprocess_gsm8k_aug_nl(split='train', model='llada', max_size=32 if config.debug else None)
+        dataset_load_val = sft_preprocess_gsm8k_aug_nl(split='test', model='llada', max_size=32 if config.debug else None)
     else:
         with open(f"./data/sft_{config.dataset.optimization_data}_llada.json", 'r') as f:
             print(f"Dataset Name: {config.dataset.optimization_data}")
@@ -242,9 +243,18 @@ def main():
 
     # dataset_load = dataset_load[:24]
     dataset_tokenized = TrainDataset(dataset_load, tokenizer)    
+    dataset_tokenized_val = TrainDataset(dataset_load_val, tokenizer)  
     
     train_dataloader_lm = DataLoader(
         dataset_tokenized,
+        batch_size=config.training.batch_size_lm,
+        sampler=None,
+        collate_fn=make_collate_fn_pad(pad_id),
+        num_workers=0
+    )
+
+    valid_dataloader_lm = DataLoader(
+        dataset_tokenized_val,
         batch_size=config.training.batch_size_lm,
         sampler=None,
         collate_fn=make_collate_fn_pad(pad_id),
@@ -272,8 +282,8 @@ def main():
     #################################
     logger.info("Preparing model, optimizer and dataloaders")
     # model, optimizer, lr_scheduler = accelerator.prepare(model, optimizer, lr_scheduler)
-    model, optimizer, lr_scheduler, train_dataloader_lm = accelerator.prepare(
-        model, optimizer, lr_scheduler, train_dataloader_lm
+    model, optimizer, lr_scheduler, train_dataloader_lm, valid_dataloader_lm = accelerator.prepare(
+        model, optimizer, lr_scheduler, train_dataloader_lm, valid_dataloader_lm
     )
 
     # Access the underlying model when wrapped in DDP
@@ -328,27 +338,6 @@ def main():
 
         B, T, V = logits.shape
 
-        # Compute loss (same for both modes)
-        # Clamp logits to prevent overflow in softmax
-        # logits = torch.clamp(logits, min=-1e4, max=1e4)
-
-        # log_probs = F.log_softmax(logits, dim=-1)   # (B, T, V)
-
-        # # NaN check for log_probs
-        # if torch.isnan(log_probs).any():
-        #     logger.error(f"NaN in log_probs! Logits stats - min: {logits.min()}, max: {logits.max()}")
-        #     raise ValueError("NaN in log_probs")
-
-        # safe_labels = labels.clone()
-        # safe_labels[labels == -100] = 0
-        # logp_tok  = log_probs.gather(dim=-1, index=safe_labels.unsqueeze(-1)).squeeze(-1)     # (B, T)
-        # loss_lm = - (logp_tok * p_mask_lm).sum(dim=1)
-
-        # mask_num = (p_mask_lm).sum(dim=1).clamp(min=1)
-        # loss_lm = loss_lm / mask_num
-
-        # loss_lm = loss_lm.sum() / B
-
         masked_indices = input_ids == mask_id
 
         loss_lm = F.cross_entropy(
@@ -367,9 +356,48 @@ def main():
 
         return loss_lm, logits
 
+    @torch.no_grad()
+    def evaluate(dataloader, H_cycles, L_cycles, mask_id, pad_id):
+        
+        model.eval()
+
+        total_loss, total_acc = [], []
+
+        for i, batch in tqdm(enumerate(dataloader)):
+            noisy_batch, labels, p_mask, answer_len = prepare_inputs_and_labels_for_token_ids(
+                                                    batch["input_ids"], batch["prompt_len"], 
+                                                    mask_id, pad_id, post_num=config.training.post_num)
+            
+            rand_mask = noisy_batch == mask_id
+
+            loss_lm, logits = forward_process(
+                    input_ids=noisy_batch,
+                    labels=labels,
+                    p_mask=p_mask,
+                    answer_len=answer_len,
+                    H_cycles=H_cycles,
+                    L_cycles=L_cycles,
+                    mask_id=mask_id
+                )
+            total_loss.append(loss_lm.item())
+
+            pred_ids = torch.argmax(logits, dim=-1)  # [L]
+            correct = (pred_ids == labels) & rand_mask
+            acc = correct.sum().item() / (rand_mask.sum().item() + 1e-6)
+            total_acc.append(acc)
+        
+        avg_loss = sum(total_loss) / len(total_loss)
+        avg_acc = sum(total_acc) / (i+1)
+
+        model.train()
+
+        return avg_loss, avg_acc
+
+
 
     global_step = 0
     log_interval = config.get('logging', {}).get('log_interval', 10)
+    eval_interval = config.get('logging', {}).get('eval_interval', 100)
 
     for epoch in tqdm(range(first_epoch, num_train_epochs)):
 
@@ -390,7 +418,9 @@ def main():
 
             data_time_m.update(time.time() - end)
 
-            noisy_batch, labels, p_mask, answer_len = prepare_inputs_and_labels_for_token_ids(batch["input_ids"], batch["prompt_len"], mask_id, pad_id, post_num=config.training.post_num)
+            noisy_batch, labels, p_mask, answer_len = prepare_inputs_and_labels_for_token_ids(
+                                    batch["input_ids"], batch["prompt_len"],
+                                    mask_id, pad_id, post_num=config.training.post_num)
 
             noisy_batch = noisy_batch.to(accelerator.device)
             labels    = labels.to(accelerator.device)
@@ -440,11 +470,11 @@ def main():
                     pretty_print_text("Predicted Output", pred_text)
 
                     # 可选：计算mask区域预测准确率
-                    rand_mask = (sample_input == mask_id)
-                    correct = (pred_ids == sample_label) & rand_mask
-                    acc = correct.sum().item() / (rand_mask.sum().item() + 1e-6)
+                    rand_mask_sample = (sample_input == mask_id)
+                    correct = (pred_ids == sample_label) & rand_mask_sample
+                    acc = correct.sum().item() / (rand_mask_sample.sum().item() + 1e-6)
                     logger.info(f"[Mask region acc] {acc * 100:.2f}% "
-                                f"({correct.sum().item()}/{rand_mask.sum().item()})")
+                                f"({correct.sum().item()}/{rand_mask_sample.sum().item()})")
 
 
             # print(loss_lm)
@@ -458,7 +488,6 @@ def main():
                 batch_size = noisy_batch.shape[0]
                 seq_len = noisy_batch.shape[1]
                 logger.info(f"Batch size: {batch_size}, Sequence length: {seq_len}")
-
                 logger.info(f"Step {step} Loss: {loss_lm}")
 
 
@@ -473,15 +502,26 @@ def main():
                 lr_scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
-                if backend != 'none' and global_step % log_interval == 0:
+                if backend != 'none' and global_step % log_interval == 0: 
+                    # calculate accuracy 计算mask区域预测准确率
+                    pred_ids = torch.argmax(logits, dim=-1)  # [L]
+                    correct = (pred_ids == labels) & rand_mask
+                    acc = correct.sum().item() / (rand_mask.sum().item() + 1e-6)
+                
                     metrics = {
                         'train/loss': loss_lm.item() * accelerator.gradient_accumulation_steps,
                         'train/lr': optimizer.param_groups[0]['lr'],
+                        'train/batch_token_acc': acc
                     }
-                    if use_latent_recursive and recursive_in_training:
-                        metrics['train/R'] = R
+                    # if use_latent_recursive and recursive_in_training:
+                    #     metrics['train/R'] = R
                     accelerator.log(metrics, step=global_step)
 
+                if backend != 'none' and global_step % eval_interval == 0:
+                    
+                    loss_eval, acc_eval = evaluate(valid_dataloader_lm, R, R, mask_id, pad_id)
+                    accelerator.log({'eval/loss': loss_eval,
+                                    'eval/token_acc': acc_eval}, step=global_step)
 
                 global_step += 1
 
