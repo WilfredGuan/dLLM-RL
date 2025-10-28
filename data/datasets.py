@@ -177,8 +177,6 @@ def prepare_inputs_and_labels_for_token_ids(
     # (2) Optional tail pad handling
     if post_num is not None:
         pad_mask_b = (input_ids == pad_id)
-        for i in range(b):
-            pad_mask_b[i, :prompt_len[i]] = False
         cumsum_pad = torch.cumsum(pad_mask_b.int(), dim=1)
         keep_first_pad_b = pad_mask_b & (cumsum_pad <= post_num)
         tail_pad_b = pad_mask_b & ~keep_first_pad_b
