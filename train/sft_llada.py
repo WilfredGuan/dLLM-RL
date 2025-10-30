@@ -129,11 +129,12 @@ def main():
     else:
         set_verbosity_error()
 
-    # Skip wandb initialization - using tensorboard instead
+    directory_suffix = config.experiment.suffix
+    base_dir = '/mnt/shared-storage-user/formalverification-shared/gaoxin/projects'
 
     if accelerator.is_main_process:
-        os.makedirs(config.experiment.project, exist_ok=True)
-        config_path = Path(config.experiment.project) / "config.yaml"
+        os.makedirs(f"{base_dir}/{config.experiment.project}"+'_'+directory_suffix, exist_ok=True)
+        config_path = Path(f"{base_dir}/{config.experiment.project}"+'_'+directory_suffix) /"config.yaml"
         logging.info(f"Saving config to {config_path}")
         OmegaConf.save(config, config_path)
 
@@ -160,9 +161,13 @@ def main():
         # Load config first and modify it before loading model
         from models.llada.configuration_llada import LLaDAConfig
         model_config = LLaDAConfig.from_pretrained(pretrained_model)
-        R = config.training.get('R', 1)
+        H_cycles = config.training.get('H_cycles', 1)
+        L_cycles = config.training.get('L_cycles', 1)
+        halt_max_steps = config.training.get('halt_max_steps', 1)
         model_config.use_latent_recursive = True
-        model_config.max_latent_recursive_steps = R
+        model_config.H_cycles = H_cycles
+        model_config.H_cycles = H_cycles
+        model_config.halt_max_steps = halt_max_steps
 
         # Load model with modified config
         model = LLaDAModelLMRecursive.from_pretrained(
@@ -170,14 +175,12 @@ def main():
             config=model_config,
             torch_dtype=torch.bfloat16
         )
-
-        logger.info(f"Enabled latent recursive with max_steps={R}")
     else:
         logger.info("Loading LLaDAModelLM (original)")
         model = LLaDAModelLM.from_pretrained(pretrained_model, torch_dtype=torch.bfloat16)
 
     ## init Low_level, High_level
-    model.model.low_level_end_idx = config.training.low_level_end_idx
+    model.low_level_end_idx = config.training.low_level_end_idx
 
     model = model.to(accelerator.device)
 
@@ -309,18 +312,13 @@ def main():
     import torch.nn.functional as F
 
     # Get latent recursive config (use_latent_recursive already defined above)
-    # R: number of latent thinking steps
     if not use_latent_recursive:
-        R = 0
         recursive_in_training = False
     else:
-        R = config.training.get('R', 1)
         recursive_in_training = config.training.get('recursive_in_training', False)
 
-    if use_latent_recursive and recursive_in_training:
-        logger.info(f"  Latent Recursive Training: R={R} (latent thinking steps)")
 
-    def forward_process(input_ids, labels, p_mask, answer_len, H_cycles, L_cycles, mask_id):
+    def forward_process(input_ids, carry, labels, p_mask, answer_len, H_cycles, L_cycles, mask_id):
         """
         Forward process with optional latent recursive.
         Training uses R steps of latent thinking, then computes loss directly.
@@ -332,9 +330,14 @@ def main():
             # Latent recursive logic with R steps
             # Unwrap model from DDP
             unwrapped_model = accelerator.unwrap_model(model)
+            hidden_states = unwrapped_model.model._input_embedding(input_ids)
 
-            carry, logits = unwrapped_model.forward_recursive_reasoning(input_ids=input_ids, 
+            if carry is None:
+                carry = unwrapped_model.init_carry(hidden_states)
+
+            carry, logits = unwrapped_model.forward_recursive_reasoning(carry=carry, hidden_states=hidden_states,
                                                                 H_cycles=H_cycles, L_cycles=L_cycles)
+
 
         B, T, V = logits.shape
 
@@ -354,7 +357,7 @@ def main():
             logger.error(f"NaN in final loss!")
             raise ValueError("NaN in final loss")
 
-        return loss_lm, logits
+        return loss_lm, logits, carry
 
     @torch.no_grad()
     def evaluate(dataloader, H_cycles, L_cycles, mask_id, pad_id):
@@ -370,15 +373,18 @@ def main():
             
             rand_mask = noisy_batch == mask_id
 
-            loss_lm, logits = forward_process(
-                    input_ids=noisy_batch,
-                    labels=labels,
-                    p_mask=p_mask,
-                    answer_len=answer_len,
-                    H_cycles=H_cycles,
-                    L_cycles=L_cycles,
-                    mask_id=mask_id
-                )
+            carry = None
+            for _ in range(halt_max_steps):
+                loss_lm, logits, carry = forward_process(
+                        input_ids=noisy_batch,
+                        carry=carry,
+                        labels=labels,
+                        p_mask=p_mask,
+                        answer_len=answer_len,
+                        H_cycles=H_cycles,
+                        L_cycles=L_cycles,
+                        mask_id=mask_id
+                    )
             total_loss.append(loss_lm.item())
 
             pred_ids = torch.argmax(logits, dim=-1)  # [L]
@@ -426,21 +432,39 @@ def main():
             labels    = labels.to(accelerator.device)
             rand_mask = noisy_batch == mask_id
 
-            loss_lm, logits = forward_process(
-                    input_ids=noisy_batch,
-                    labels=labels,
-                    p_mask=p_mask,
-                    answer_len=answer_len,
-                    H_cycles=R,
-                    L_cycles=R,
-                    mask_id=mask_id
-                )
-            loss_lm = loss_lm / accelerator.gradient_accumulation_steps
+
+            with accelerator.accumulate(model):
+
+                carry = None
+                for _ in range(halt_max_steps):   # default to halt_max_steps, maybe change to adaptive later
+
+                    loss_lm, logits, carry = forward_process(
+                            input_ids=noisy_batch,
+                            carry=carry,
+                            labels=labels,
+                            p_mask=p_mask,
+                            answer_len=answer_len,
+                            H_cycles=H_cycles,
+                            L_cycles=L_cycles,
+                            mask_id=mask_id
+                        )
+
+                    accelerator.backward(loss_lm)
+
+                    if config.training.max_grad_norm is not None:
+                        accelerator.clip_grad_norm_(model.parameters(),
+                                                config.training.max_grad_norm)
+                    optimizer.step()
+                    lr_scheduler.step()
+                    optimizer.zero_grad(set_to_none=True)
 
             # =============================
-            # 打印第一个样本的预测结果
+            # 打印部分预测结果
             # =============================
             if accelerator.is_main_process and step % 100 == 0:  # 每100步打印一次
+
+                logger.info(f"Step {global_step}, Loss: {loss_lm.item():.4f}")
+
                 with torch.no_grad():
                     # 取第一个样本
                     sample_idx = 0
@@ -476,72 +500,46 @@ def main():
                     logger.info(f"[Mask region acc] {acc * 100:.2f}% "
                                 f"({correct.sum().item()}/{rand_mask_sample.sum().item()})")
 
+            if backend != 'none' and global_step % log_interval == 0: 
+                # calculate accuracy 计算mask区域预测准确率
+                pred_ids = torch.argmax(logits, dim=-1)  # [L]
+                correct = (pred_ids == labels) & rand_mask
+                acc = correct.sum().item() / (rand_mask.sum().item() + 1e-6)
+            
+                metrics = {
+                    'train/loss': loss_lm.item(),
+                    'train/lr': optimizer.param_groups[0]['lr'],
+                    'train/batch_token_acc': acc
+                }
+                # if use_latent_recursive and recursive_in_training:
+                #     metrics['train/R'] = R
+                accelerator.log(metrics, step=global_step)
 
-            # print(loss_lm)
-            # Debug: Print prompt/response for first 5 steps
-            if step % 50 ==0 and accelerator.is_main_process:
-                logger.info(f"\n{'='*80}")
-                logger.info(f"[DEBUG] Step {step} - Input Inspection")
-                logger.info(f"{'='*80}")
-
-                # Get batch info
-                batch_size = noisy_batch.shape[0]
-                seq_len = noisy_batch.shape[1]
-                logger.info(f"Batch size: {batch_size}, Sequence length: {seq_len}")
-                logger.info(f"Step {step} Loss: {loss_lm}")
-
-
-            accelerator.backward(loss_lm)
-
-            if (step + 1) % accelerator.gradient_accumulation_steps == 0:
-                if config.training.max_grad_norm is not None:
-                    accelerator.clip_grad_norm_(model.parameters(),
-                                                config.training.max_grad_norm)
-
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad(set_to_none=True)
-
-                if backend != 'none' and global_step % log_interval == 0: 
-                    # calculate accuracy 计算mask区域预测准确率
-                    pred_ids = torch.argmax(logits, dim=-1)  # [L]
-                    correct = (pred_ids == labels) & rand_mask
-                    acc = correct.sum().item() / (rand_mask.sum().item() + 1e-6)
+            if backend != 'none' and global_step % eval_interval == 0:
                 
-                    metrics = {
-                        'train/loss': loss_lm.item() * accelerator.gradient_accumulation_steps,
-                        'train/lr': optimizer.param_groups[0]['lr'],
-                        'train/batch_token_acc': acc
-                    }
-                    # if use_latent_recursive and recursive_in_training:
-                    #     metrics['train/R'] = R
-                    accelerator.log(metrics, step=global_step)
+                loss_eval, acc_eval = evaluate(valid_dataloader_lm, H_cycles, L_cycles, mask_id, pad_id)
+                accelerator.log({'eval/loss': loss_eval,
+                                'eval/token_acc': acc_eval}, step=global_step)
 
-                if backend != 'none' and global_step % eval_interval == 0:
-                    
-                    loss_eval, acc_eval = evaluate(valid_dataloader_lm, R, R, mask_id, pad_id)
-                    accelerator.log({'eval/loss': loss_eval,
-                                    'eval/token_acc': acc_eval}, step=global_step)
+            global_step += 1
 
-                global_step += 1
-
-                del noisy_batch, labels, p_mask, answer_len
-                torch.cuda.empty_cache()
+            del noisy_batch, labels, p_mask, answer_len, rand_mask
+            torch.cuda.empty_cache()
 
         # Save checkpoint at the end of each epoch with epoch and global_step in the filename
         checkpoint_name = f"checkpoint-epoch{epoch+1}-step{global_step}"
-        save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name)
+        save_checkpoint(model, tokenizer, config, accelerator, checkpoint_name, directory_suffix, base_dir)
 
     accelerator.wait_for_everyone()
 
     # save checkpoint at the end of training
-    save_checkpoint(model, tokenizer, config, accelerator, config.model.optimized_name)
+    save_checkpoint(model, tokenizer, config, accelerator, config.model.optimized_name, directory_suffix, base_dir)
 
     accelerator.end_training()
 
 
-def save_checkpoint(model, tokenizer, config, accelerator, name):
-    output_dir = Path(config.experiment.project)
+def save_checkpoint(model, tokenizer, config, accelerator, name, directory_suffix, base_dir):
+    output_dir = Path(f"{base_dir}/{config.experiment.project}"+'_'+directory_suffix)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     checkpoints_total_limit = config.experiment.get("checkpoints_total_limit", None)

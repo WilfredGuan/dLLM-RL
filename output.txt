@@ -1,83 +1,37 @@
-[2025-10-28 14:02:27,046] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:29,324] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:20,478] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:24,725] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
 /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/accelerate/utils/launch.py:447: UserWarning: Port `8888` is already in use. Accelerate will attempt to launch in a standalone-like mode by finding an open port automatically for this session. If this current attempt fails, or for more control in future runs, please specify a different port (e.g., `--main_process_port <your_chosen_port>`) or use `--main_process_port 0` for automatic selection in your launch command or Accelerate config file.
   warnings.warn(
-W1028 14:02:29.785000 17082 site-packages/torch/distributed/run.py:766] 
-W1028 14:02:29.785000 17082 site-packages/torch/distributed/run.py:766] *****************************************
-W1028 14:02:29.785000 17082 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
-W1028 14:02:29.785000 17082 site-packages/torch/distributed/run.py:766] *****************************************
-[2025-10-28 14:02:35,043] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:35,052] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:35,055] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:35,169] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:35,516] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:35,630] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:35,643] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:35,645] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-10-28 14:02:36,137] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-28 14:02:36,139] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-28 14:02:36,147] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-28 14:02:36,161] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-28 14:02:36,161] [INFO] [comm.py:852:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
-[2025-10-28 14:02:36,163] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-28 14:02:36,170] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-28 14:02:36,218] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-28 14:02:36,242] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-28 14:02:36,657] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-28 14:02:36,681] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-28 14:02:36,886] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-28 14:02:36,895] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-28 14:02:36,911] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-28 14:02:36,919] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-10-28 14:02:36,934] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-10-28 14:02:36,959] [INFO] [comm.py:821:init_distributed] cdb=None
-10/28/2025 14:02:39 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
-Num processes: 8
-Process index: 4
-Local process index: 4
-Device: cuda:4
-
-Mixed precision type: bf16
-ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
-
-10/28/2025 14:02:39 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
-Num processes: 8
-Process index: 5
-Local process index: 5
-Device: cuda:5
-
-Mixed precision type: bf16
-ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
-
-[Logging] No online/offline logging backend (none)
-10/28/2025 14:02:39 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
-Num processes: 8
-Process index: 0
-Local process index: 0
-Device: cuda:0
-
-Mixed precision type: bf16
-ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
-
-10/28/2025 14:02:39 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
-Num processes: 8
-Process index: 1
-Local process index: 1
-Device: cuda:1
-
-Mixed precision type: bf16
-ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
-
-10/28/2025 14:02:39 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
-Num processes: 8
-Process index: 3
-Local process index: 3
-Device: cuda:3
-
-Mixed precision type: bf16
-ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
-
-10/28/2025 14:02:39 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
+W1029 12:39:25.616000 208975 site-packages/torch/distributed/run.py:766] 
+W1029 12:39:25.616000 208975 site-packages/torch/distributed/run.py:766] *****************************************
+W1029 12:39:25.616000 208975 site-packages/torch/distributed/run.py:766] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W1029 12:39:25.616000 208975 site-packages/torch/distributed/run.py:766] *****************************************
+[2025-10-29 12:39:31,296] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:31,304] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:31,318] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:31,322] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:31,322] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:31,322] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:31,359] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:31,436] [INFO] [real_accelerator.py:254:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-29 12:39:32,554] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:32,577] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-29 12:39:32,577] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:32,584] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:32,591] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:32,599] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:32,601] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-29 12:39:32,608] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-29 12:39:32,608] [INFO] [comm.py:852:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
+[2025-10-29 12:39:32,615] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-29 12:39:32,624] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-29 12:39:32,626] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:32,650] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-29 12:39:32,674] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:32,680] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-29 12:39:32,701] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-29 12:39:32,705] [INFO] [comm.py:821:init_distributed] cdb=None
+10/29/2025 12:39:36 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
 Num processes: 8
 Process index: 7
 Local process index: 7
@@ -86,17 +40,16 @@ Device: cuda:7
 Mixed precision type: bf16
 ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
 
-10/28/2025 14:02:39 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
+10/29/2025 12:39:36 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
 Num processes: 8
-Process index: 6
-Local process index: 6
-Device: cuda:6
+Process index: 3
+Local process index: 3
+Device: cuda:3
 
 Mixed precision type: bf16
 ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
 
-10/28/2025 14:02:39 - INFO - root - Saving config to sft_llada_recursive_test/config.yaml
-10/28/2025 14:02:39 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
+10/29/2025 12:39:36 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
 Num processes: 8
 Process index: 2
 Local process index: 2
@@ -105,104 +58,151 @@ Device: cuda:2
 Mixed precision type: bf16
 ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
 
-10/28/2025 14:02:39 - INFO - __main__ - Loading models and optimizer
-[2025-10-28 14:02:40,097] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-28 14:02:40,103] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-28 14:02:40,104] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-28 14:02:40,105] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-28 14:02:40,116] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-10/28/2025 14:02:40 - INFO - __main__ - use_latent_recursive: True
-10/28/2025 14:02:40 - INFO - __main__ - Loading LLaDAModelLMRecursive (with latent recursive support)
-[2025-10-28 14:02:40,130] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-28 14:02:40,167] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-28 14:02:40,173] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-28 14:02:45,606] [INFO] [partition_parameters.py:366:__exit__] finished initializing model - num_params = 291, num_elems = 8.02B
-Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.08it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.08it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.09it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.09it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.08it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.08it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.08it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:00<00:04,  1.05it/s]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.16s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.16s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.17s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.17s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.17s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.17s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.18s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:02<00:04,  1.18s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.23s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.23s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.23s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.23s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.23s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.23s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.23s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:03<00:03,  1.24s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.23s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.23s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.23s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.23s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.23s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.23s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.23s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:04<00:02,  1.24s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.24s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.24s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.24s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.24s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.24s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.24s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.23s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:06<00:01,  1.24s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.14s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.14s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.14s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:06<00:00,  1.14s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:06<00:00,  1.14s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.17s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.17s/it]
+10/29/2025 12:39:36 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
+Num processes: 8
+Process index: 6
+Local process index: 6
+Device: cuda:6
 
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.17s/it]
-Loading checkpoint shards: 100%|██████████| 6/6 [00:06<00:00,  1.17s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:06<00:00,  1.17s/it]
+Mixed precision type: bf16
+ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
 
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.14s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.14s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.17s/it]
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.17s/it]
-Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.14s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:07<00:00,  1.17s/it]
-10/28/2025 14:02:52 - INFO - __main__ - Enabled latent recursive with max_steps=2
-10/28/2025 14:02:52 - INFO - __main__ - Creating dataloaders and lr_scheduler
-10/28/2025 14:02:52 - INFO - __main__ - Preprocessing data....
+10/29/2025 12:39:36 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
+Num processes: 8
+Process index: 1
+Local process index: 1
+Device: cuda:1
+
+Mixed precision type: bf16
+ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
+
+10/29/2025 12:39:36 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
+Num processes: 8
+Process index: 5
+Local process index: 5
+Device: cuda:5
+
+Mixed precision type: bf16
+ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
+
+10/29/2025 12:39:36 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
+Num processes: 8
+Process index: 4
+Local process index: 4
+Device: cuda:4
+
+Mixed precision type: bf16
+ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
+
+[Logging] No online/offline logging backend (none)
+10/29/2025 12:39:36 - INFO - __main__ - Distributed environment: DistributedType.DEEPSPEED  Backend: nccl
+Num processes: 8
+Process index: 0
+Local process index: 0
+Device: cuda:0
+
+Mixed precision type: bf16
+ds_config: {'train_batch_size': 'auto', 'train_micro_batch_size_per_gpu': 'auto', 'gradient_accumulation_steps': 'auto', 'zero_optimization': {'stage': 3, 'offload_optimizer': {'device': 'cpu', 'nvme_path': None}, 'offload_param': {'device': 'cpu', 'nvme_path': None}, 'stage3_gather_16bit_weights_on_model_save': True}, 'gradient_clipping': 1.0, 'steps_per_print': inf, 'bf16': {'enabled': True}, 'fp16': {'enabled': False}}
+
+10/29/2025 12:39:36 - INFO - root - Saving config to /mnt/shared-storage-user/formalverification-shared/gaoxin/projects/sft_llada_recursive3_2025-10-26-20:00/config.yaml
+10/29/2025 12:39:36 - INFO - __main__ - Loading models and optimizer
+[2025-10-29 12:39:36,631] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:39:36,633] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:39:36,643] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:39:36,643] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+10/29/2025 12:39:36 - INFO - __main__ - use_latent_recursive: True
+10/29/2025 12:39:36 - INFO - __main__ - Loading LLaDAModelLMRecursive (with latent recursive support)
+[2025-10-29 12:39:36,645] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:39:36,645] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:39:36,647] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:39:36,647] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:39:42,820] [INFO] [partition_parameters.py:366:__exit__] finished initializing model - num_params = 291, num_elems = 8.02B
+Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/6 [00:00<?, ?it/s]Loading checkpoint shards:  17%|█▋        | 1/6 [00:02<00:14,  2.98s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:02<00:14,  2.99s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:02<00:14,  2.98s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:02<00:14,  2.97s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:02<00:14,  2.98s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:02<00:14,  2.98s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:02<00:14,  2.98s/it]Loading checkpoint shards:  17%|█▋        | 1/6 [00:03<00:15,  3.03s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:06<00:13,  3.31s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:06<00:13,  3.31s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:06<00:13,  3.31s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:06<00:13,  3.31s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:06<00:13,  3.31s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:06<00:13,  3.31s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:06<00:13,  3.33s/it]Loading checkpoint shards:  33%|███▎      | 2/6 [00:06<00:13,  3.34s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:13<00:15,  5.18s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:13<00:15,  5.18s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:13<00:15,  5.17s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:13<00:15,  5.18s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:13<00:15,  5.17s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:13<00:15,  5.18s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:13<00:15,  5.18s/it]Loading checkpoint shards:  50%|█████     | 3/6 [00:13<00:15,  5.19s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:18<00:09,  4.91s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:18<00:09,  4.91s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:18<00:09,  4.91s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:18<00:09,  4.91s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:18<00:09,  4.91s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:18<00:09,  4.91s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:18<00:09,  4.91s/it]Loading checkpoint shards:  67%|██████▋   | 4/6 [00:18<00:09,  4.92s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:22<00:04,  4.51s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:22<00:04,  4.51s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:22<00:04,  4.51s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:22<00:04,  4.51s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:22<00:04,  4.51s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:22<00:04,  4.51s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:22<00:04,  4.51s/it]Loading checkpoint shards:  83%|████████▎ | 5/6 [00:22<00:04,  4.51s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  4.12s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  4.12s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  4.12s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  4.12s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  3.82s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  4.12s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  4.12s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  4.12s/it]
+Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  3.82s/it]Loading checkpoint shards: 100%|██████████| 6/6 [00:24<00:00,  4.13s/it]
+10/29/2025 12:40:07 - INFO - __main__ - Creating dataloaders and lr_scheduler
+10/29/2025 12:40:07 - INFO - __main__ - Preprocessing data....
 Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
 Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:05:16 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:05:16 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:05:16 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:05:16 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
 Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
 Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:05:16 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:05:16 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:05:16 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:05:16 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:05:16 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:05:16 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:05:16 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:05:16 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
+10/29/2025 12:42:31 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:42:31 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:42:31 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:42:31 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
 Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:05:16 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:05:16 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
+10/29/2025 12:42:31 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
 Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:05:16 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:05:16 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
+10/29/2025 12:42:31 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
 Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:07:41 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:07:41 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-SFT preprocess GSM8K-aug-nl:   0%|          | 0/165 [00:00<?, ? examples/s]Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:07:41 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:07:41 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:07:41 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:07:41 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:07:41 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:07:41 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:07:41 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:07:41 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:07:41 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-10/28/2025 14:07:41 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Mon Oct 27 06:19:23 2025).
-SFT preprocess GSM8K-aug-nl:   0%|          | 0/165 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 165/165 [00:00<00:00, 5029.51 examples/s]
-SFT preprocess GSM8K-aug-nl:   0%|          | 0/165 [00:00<?, ? examples/s]10/28/2025 14:07:41 - INFO - __main__ - Preparing model, optimizer and dataloaders
-SFT preprocess GSM8K-aug-nl: 100%|██████████| 165/165 [00:00<00:00, 21091.04 examples/s]
-10/28/2025 14:07:41 - INFO - accelerate.accelerator - Since you passed both train and evaluation dataloader, `is_train_batch_min` (here True will decide the `train_batch_size` (16).
-SFT preprocess GSM8K-aug-nl: 100%|██████████| 165/165 [00:00<00:00, 23272.70 examples/s]
-SFT preprocess GSM8K-aug-nl:   0%|          | 0/165 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl:   0%|          | 0/164 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 165/165 [00:00<00:00, 16367.34 examples/s]
-SFT preprocess GSM8K-aug-nl: 100%|██████████| 164/164 [00:00<00:00, 26316.70 examples/s]
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:07:41 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-SFT preprocess GSM8K-aug-nl:   0%|          | 0/165 [00:00<?, ? examples/s]Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
-10/28/2025 14:07:41 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
-SFT preprocess GSM8K-aug-nl:   0%|          | 0/165 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 165/165 [00:00<00:00, 20097.00 examples/s]
-SFT preprocess GSM8K-aug-nl: 100%|██████████| 165/165 [00:00<00:00, 15462.27 examples/s]
-Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
-10/28/2025 14:07:41 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:42:31 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
 Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
-10/28/2025 14:07:41 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
-SFT preprocess GSM8K-aug-nl:   0%|          | 0/165 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 165/165 [00:00<00:00, 25731.93 examples/s]
+10/29/2025 12:42:31 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:42:31 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:42:31 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:42:31 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:42:31 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:42:31 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:42:31 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:42:31 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:42:31 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:44:56 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:44:56 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:44:56 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:44:56 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:44:56 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:44:56 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:44:56 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:44:56 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:44:56 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:44:56 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:44:56 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:44:56 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+SFT preprocess GSM8K-aug-nl:   0%|          | 0/4 [00:00<?, ? examples/s]Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:44:56 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+SFT preprocess GSM8K-aug-nl:   0%|          | 0/4 [00:00<?, ? examples/s]Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:44:56 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+10/29/2025 12:44:56 - WARNING - datasets.load - Using the latest cached version of the dataset since whyNLP/gsm8k-aug-nl couldn't be found on the Hugging Face Hub
+SFT preprocess GSM8K-aug-nl:   0%|          | 0/4 [00:00<?, ? examples/s]Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+10/29/2025 12:44:56 - WARNING - datasets.packaged_modules.cache.cache - Found the latest cached dataset configuration 'default' at /mnt/shared-storage-user/gaoxin1/.cache/datasets/whyNLP___gsm8k-aug-nl/default/0.0.0/41bee770625a12558156efbcba8a76fc04a2ce23 (last modified on Tue Oct 28 14:07:41 2025).
+SFT preprocess GSM8K-aug-nl:   0%|          | 0/4 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl:   0%|          | 0/4 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl:   0%|          | 0/4 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl:   0%|          | 0/4 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl:   0%|          | 0/4 [00:00<?, ? examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 24.98 examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.94 examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.46 examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.55 examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.44 examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.90 examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 19.03 examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.77 examples/s]SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.38 examples/s]
+SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 24.51 examples/s]
+SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.33 examples/s]
+SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.44 examples/s]
+SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 18.28 examples/s]
+SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 14.95 examples/s]
+SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 14.92 examples/s]
+SFT preprocess GSM8K-aug-nl: 100%|██████████| 4/4 [00:00<00:00, 15.38 examples/s]
+10/29/2025 12:44:56 - INFO - __main__ - Preparing model, optimizer and dataloaders
+10/29/2025 12:44:56 - INFO - accelerate.accelerator - Since you passed both train and evaluation dataloader, `is_train_batch_min` (here True will decide the `train_batch_size` (16).
 Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
+Creating extension directory /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam...
 Detected CUDA files, patching ldflags
 Emitting ninja build file /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam/build.ninja...
 /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
@@ -210,141 +210,111 @@ If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
   warnings.warn(
 Building extension module cpu_adam...
 Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-ninja: no work to do.
-Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.495281219482422 seconds
-Adam Optimizer #0 is created with AVX512 arithmetic capability.
-Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-28 14:07:45,162] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed info: version=0.17.4, git-hash=unknown, git-branch=unknown
-[2025-10-28 14:07:45,162] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam/build.ninja...
-/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
-If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
-  warnings.warn(
-Building extension module cpu_adam...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-ninja: no work to do.
-Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.5948779582977295 seconds
-Adam Optimizer #0 is created with AVX512 arithmetic capability.
-Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-28 14:07:45,253] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam/build.ninja...
-/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
-If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
-  warnings.warn(
-Building extension module cpu_adam...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-ninja: no work to do.
-Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.7026326656341553 seconds
-Adam Optimizer #0 is created with AVX512 arithmetic capability.
-Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-28 14:07:45,420] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
-Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam/build.ninja...
-/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
-If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
-  warnings.warn(
-Building extension module cpu_adam...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-ninja: no work to do.
-Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.8786556720733643 seconds
-Adam Optimizer #0 is created with AVX512 arithmetic capability.
-Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-28 14:07:45,578] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
 Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
 Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
 Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
-Detected CUDA files, patching ldflags
-Emitting ninja build file /home/gaoxin1/.cache/torch_extensions/py311_cu128/cpu_adam/build.ninja...
-/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation. 
-If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
-  warnings.warn(
-Building extension module cpu_adam...
-Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
-ninja: no work to do.
+Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
+Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
+Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
+Using /home/gaoxin1/.cache/torch_extensions/py311_cu128 as PyTorch extensions root...
+[1/3] c++ -MMD -MF cpu_adam.o.d -DTORCH_EXTENSION_NAME=cpu_adam -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1016\" -I/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/deepspeed/ops/csrc/includes -isystem /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/include -isystem /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda/include -isystem /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/include/python3.11 -D_GLIBCXX_USE_CXX11_ABI=1 -fPIC -std=c++17 -O3 -std=c++17 -g -Wno-reorder -L/usr/local/cuda/lib64 -lcudart -lcublas -g -march=native -fopenmp -D__AVX512__ -D__ENABLE_CUDA__ -UC10_USE_GLOG -DBF16_AVAILABLE -c /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/deepspeed/ops/csrc/adam/cpu_adam.cpp -o cpu_adam.o 
+[2/3] c++ -MMD -MF cpu_adam_impl.o.d -DTORCH_EXTENSION_NAME=cpu_adam -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1016\" -I/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/deepspeed/ops/csrc/includes -isystem /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/include -isystem /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/include/torch/csrc/api/include -isystem /usr/local/cuda/include -isystem /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/include/python3.11 -D_GLIBCXX_USE_CXX11_ABI=1 -fPIC -std=c++17 -O3 -std=c++17 -g -Wno-reorder -L/usr/local/cuda/lib64 -lcudart -lcublas -g -march=native -fopenmp -D__AVX512__ -D__ENABLE_CUDA__ -UC10_USE_GLOG -DBF16_AVAILABLE -c /mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/deepspeed/ops/csrc/adam/cpu_adam_impl.cpp -o cpu_adam_impl.o 
+[3/3] c++ cpu_adam.o cpu_adam_impl.o -shared -lcurand -L/usr/local/cuda/lib64 -L/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/lib -lc10 -lc10_cuda -ltorch_cpu -ltorch_cuda -ltorch -ltorch_python -L/usr/local/cuda/lib64 -lcudart -o cpu_adam.so
 Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.73708438873291 seconds
+Time to load cpu_adam op: 29.9218270778656 seconds
 Adam Optimizer #0 is created with AVX512 arithmetic capability.
 Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-28 14:07:45,644] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:45:28,123] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
 Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.993968963623047 seconds
+Time to load cpu_adam op: 29.650113582611084 seconds
 Adam Optimizer #0 is created with AVX512 arithmetic capability.
 Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-28 14:07:45,673] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:45:28,131] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
 Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.8513715267181396 seconds
+Time to load cpu_adam op: 29.618377685546875 seconds
 Adam Optimizer #0 is created with AVX512 arithmetic capability.
 Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-28 14:07:45,739] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:45:28,162] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
 Loading extension module cpu_adam...
-Time to load cpu_adam op: 2.8289315700531006 seconds
+Time to load cpu_adam op: 29.314128637313843 seconds
 Adam Optimizer #0 is created with AVX512 arithmetic capability.
 Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
-[2025-10-28 14:07:45,741] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
-[2025-10-28 14:07:45,980] [INFO] [engine.py:1339:_configure_distributed_model] ********** distributed groups summary **********
+[2025-10-29 12:45:28,165] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+Loading extension module cpu_adam...
+Time to load cpu_adam op: 29.6338050365448 seconds
+Adam Optimizer #0 is created with AVX512 arithmetic capability.
+Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
+[2025-10-29 12:45:28,177] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+Loading extension module cpu_adam...
+Time to load cpu_adam op: 29.999616861343384 seconds
+Adam Optimizer #0 is created with AVX512 arithmetic capability.
+Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
+[2025-10-29 12:45:28,201] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+Loading extension module cpu_adam...
+Time to load cpu_adam op: 29.67282485961914 seconds
+Adam Optimizer #0 is created with AVX512 arithmetic capability.
+Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
+[2025-10-29 12:45:28,213] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+Loading extension module cpu_adam...
+Time to load cpu_adam op: 29.685412883758545 seconds
+Adam Optimizer #0 is created with AVX512 arithmetic capability.
+Config: alpha=0.000010, betas=(0.900000, 0.999000), weight_decay=0.000000, adam_w=1
+[2025-10-29 12:45:28,217] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed info: version=0.17.4, git-hash=unknown, git-branch=unknown
+[2025-10-29 12:45:28,217] [INFO] [config.py:684:__init__] Config mesh_device None world_size = 8
+[2025-10-29 12:45:28,614] [INFO] [engine.py:1339:_configure_distributed_model] ********** distributed groups summary **********
 	 self.dp_world_size=8
 	 self.mp_world_size=1
 	 self.seq_dp_world_size=8
 	 self.sequence_parallel_size=1
 ***********************************************
-[2025-10-28 14:07:45,981] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed Flops Profiler Enabled: False
-[2025-10-28 14:07:45,982] [INFO] [logging.py:107:log_dist] [Rank 0] Using client Optimizer as basic optimizer
-[2025-10-28 14:07:45,982] [INFO] [logging.py:107:log_dist] [Rank 0] Removing param_group that has no 'params' in the basic Optimizer
-[2025-10-28 14:07:45,989] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed Basic Optimizer = DeepSpeedCPUAdam
-[2025-10-28 14:07:45,989] [INFO] [utils.py:59:is_zero_supported_optimizer] Checking ZeRO support for optimizer=DeepSpeedCPUAdam type=<class 'deepspeed.ops.adam.cpu_adam.DeepSpeedCPUAdam'>
-[2025-10-28 14:07:45,989] [INFO] [logging.py:107:log_dist] [Rank 0] Creating fp16 ZeRO stage 3 optimizer, MiCS is enabled False, Hierarchical params gather False
-[2025-10-28 14:07:45,989] [INFO] [logging.py:107:log_dist] [Rank 0] Creating torch.bfloat16 ZeRO stage 3 optimizer
-[2025-10-28 14:07:46,182] [INFO] [utils.py:781:see_memory_usage] Stage 3 initialize beginning
-[2025-10-28 14:07:46,182] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 1.93 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:46,184] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 27.88 GB, percent = 3.6%
-[2025-10-28 14:07:46,185] [INFO] [stage3.py:186:__init__] Reduce bucket size 500000000
-[2025-10-28 14:07:46,185] [INFO] [stage3.py:187:__init__] Prefetch bucket size 50000000
-[2025-10-28 14:07:46,270] [INFO] [utils.py:781:see_memory_usage] DeepSpeedZeRoOffload initialize [begin]
-[2025-10-28 14:07:46,270] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:46,271] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 27.88 GB, percent = 3.6%
+[2025-10-29 12:45:28,615] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed Flops Profiler Enabled: False
+[2025-10-29 12:45:28,615] [INFO] [logging.py:107:log_dist] [Rank 0] Using client Optimizer as basic optimizer
+[2025-10-29 12:45:28,615] [INFO] [logging.py:107:log_dist] [Rank 0] Removing param_group that has no 'params' in the basic Optimizer
+[2025-10-29 12:45:28,624] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed Basic Optimizer = DeepSpeedCPUAdam
+[2025-10-29 12:45:28,624] [INFO] [utils.py:59:is_zero_supported_optimizer] Checking ZeRO support for optimizer=DeepSpeedCPUAdam type=<class 'deepspeed.ops.adam.cpu_adam.DeepSpeedCPUAdam'>
+[2025-10-29 12:45:28,624] [INFO] [logging.py:107:log_dist] [Rank 0] Creating fp16 ZeRO stage 3 optimizer, MiCS is enabled False, Hierarchical params gather False
+[2025-10-29 12:45:28,624] [INFO] [logging.py:107:log_dist] [Rank 0] Creating torch.bfloat16 ZeRO stage 3 optimizer
+[2025-10-29 12:45:28,818] [INFO] [utils.py:781:see_memory_usage] Stage 3 initialize beginning
+[2025-10-29 12:45:28,818] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 1.93 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:28,819] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 102.84 GB, percent = 13.2%
+[2025-10-29 12:45:28,820] [INFO] [stage3.py:186:__init__] Reduce bucket size 500000000
+[2025-10-29 12:45:28,820] [INFO] [stage3.py:187:__init__] Prefetch bucket size 50000000
+[2025-10-29 12:45:28,919] [INFO] [utils.py:781:see_memory_usage] DeepSpeedZeRoOffload initialize [begin]
+[2025-10-29 12:45:28,920] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:28,921] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 102.87 GB, percent = 13.2%
 Parameter Offload - Persistent parameters statistics: param_count = 65, numel = 266240
-[2025-10-28 14:07:46,400] [INFO] [utils.py:781:see_memory_usage] DeepSpeedZeRoOffload initialize [end]
-[2025-10-28 14:07:46,401] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:46,402] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 27.88 GB, percent = 3.6%
-[2025-10-28 14:07:46,486] [INFO] [utils.py:781:see_memory_usage] Before creating fp16 partitions
-[2025-10-28 14:07:46,486] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:46,487] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 27.88 GB, percent = 3.6%
-[2025-10-28 14:07:48,788] [INFO] [utils.py:781:see_memory_usage] After creating fp16 partitions: 1
-[2025-10-28 14:07:48,789] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:48,790] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 32.37 GB, percent = 4.1%
-[2025-10-28 14:07:48,952] [INFO] [utils.py:781:see_memory_usage] Before creating fp32 partitions
-[2025-10-28 14:07:48,952] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:48,953] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 35.21 GB, percent = 4.5%
-[2025-10-28 14:07:51,277] [INFO] [utils.py:781:see_memory_usage] After creating fp32 partitions
-[2025-10-28 14:07:51,278] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:51,279] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 55.94 GB, percent = 7.2%
-[2025-10-28 14:07:51,365] [INFO] [utils.py:781:see_memory_usage] Before initializing optimizer states
-[2025-10-28 14:07:51,366] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:51,367] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 57.69 GB, percent = 7.4%
-[2025-10-28 14:07:54,196] [INFO] [utils.py:781:see_memory_usage] After initializing optimizer states
-[2025-10-28 14:07:54,197] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
-[2025-10-28 14:07:54,198] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 85.86 GB, percent = 11.0%
-[2025-10-28 14:07:54,199] [INFO] [stage3.py:554:_setup_for_real_optimizer] optimizer state initialized
-  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s][2025-10-28 14:07:55,128] [INFO] [utils.py:781:see_memory_usage] After initializing ZeRO optimizer
-[2025-10-28 14:07:55,128] [INFO] [utils.py:782:see_memory_usage] MA 0.93 GB         Max_MA 2.86 GB         CA 2.9 GB         Max_CA 3 GB 
-[2025-10-28 14:07:55,129] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 100.82 GB, percent = 12.9%
-[2025-10-28 14:07:55,129] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed Final Optimizer = DeepSpeedZeroOptimizer_Stage3
-[2025-10-28 14:07:55,130] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed using configured LR scheduler = None
-[2025-10-28 14:07:55,130] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed LR Scheduler = None
-[2025-10-28 14:07:55,130] [INFO] [logging.py:107:log_dist] [Rank 0] step=0, skipped=0, lr=[1e-05], mom=[(0.9, 0.999)]
-[2025-10-28 14:07:55,130] [INFO] [logging.py:107:log_dist] [Rank 0] [TorchCheckpointEngine] Initialized with serialization = True
-[2025-10-28 14:07:55,130] [INFO] [config.py:954:print] DeepSpeedEngine configuration:
-[2025-10-28 14:07:55,130] [INFO] [config.py:958:print]   activation_checkpointing_config  {
+[2025-10-29 12:45:29,061] [INFO] [utils.py:781:see_memory_usage] DeepSpeedZeRoOffload initialize [end]
+[2025-10-29 12:45:29,062] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:29,063] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 102.87 GB, percent = 13.2%
+[2025-10-29 12:45:29,164] [INFO] [utils.py:781:see_memory_usage] Before creating fp16 partitions
+[2025-10-29 12:45:29,165] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:29,166] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 102.87 GB, percent = 13.2%
+[2025-10-29 12:45:31,551] [INFO] [utils.py:781:see_memory_usage] After creating fp16 partitions: 1
+[2025-10-29 12:45:31,552] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:31,553] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 104.76 GB, percent = 13.4%
+[2025-10-29 12:45:31,740] [INFO] [utils.py:781:see_memory_usage] Before creating fp32 partitions
+[2025-10-29 12:45:31,741] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:31,743] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 107.69 GB, percent = 13.8%
+[2025-10-29 12:45:34,456] [INFO] [utils.py:781:see_memory_usage] After creating fp32 partitions
+[2025-10-29 12:45:34,457] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:34,458] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 130.95 GB, percent = 16.8%
+[2025-10-29 12:45:34,570] [INFO] [utils.py:781:see_memory_usage] Before initializing optimizer states
+[2025-10-29 12:45:34,570] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:34,572] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 132.99 GB, percent = 17.0%
+[2025-10-29 12:45:37,889] [INFO] [utils.py:781:see_memory_usage] After initializing optimizer states
+[2025-10-29 12:45:37,890] [INFO] [utils.py:782:see_memory_usage] MA 0.0 GB         Max_MA 0.0 GB         CA 1.93 GB         Max_CA 2 GB 
+[2025-10-29 12:45:37,892] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 160.88 GB, percent = 20.6%
+[2025-10-29 12:45:37,893] [INFO] [stage3.py:554:_setup_for_real_optimizer] optimizer state initialized
+  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s]  0%|          | 0/25 [00:00<?, ?it/s][2025-10-29 12:45:40,217] [INFO] [utils.py:781:see_memory_usage] After initializing ZeRO optimizer
+[2025-10-29 12:45:40,218] [INFO] [utils.py:782:see_memory_usage] MA 0.93 GB         Max_MA 2.86 GB         CA 2.9 GB         Max_CA 3 GB 
+[2025-10-29 12:45:40,220] [INFO] [utils.py:789:see_memory_usage] CPU Virtual Memory:  used = 175.86 GB, percent = 22.5%
+[2025-10-29 12:45:40,220] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed Final Optimizer = DeepSpeedZeroOptimizer_Stage3
+[2025-10-29 12:45:40,220] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed using configured LR scheduler = None
+[2025-10-29 12:45:40,220] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed LR Scheduler = None
+[2025-10-29 12:45:40,220] [INFO] [logging.py:107:log_dist] [Rank 0] step=0, skipped=0, lr=[1e-05], mom=[(0.9, 0.999)]
+[2025-10-29 12:45:40,221] [INFO] [logging.py:107:log_dist] [Rank 0] [TorchCheckpointEngine] Initialized with serialization = True
+[2025-10-29 12:45:40,221] [INFO] [config.py:954:print] DeepSpeedEngine configuration:
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   activation_checkpointing_config  {
     "partition_activations": false, 
     "contiguous_memory_optimization": false, 
     "cpu_checkpointing": false, 
@@ -352,10 +322,10 @@ Parameter Offload - Persistent parameters statistics: param_count = 65, numel = 
     "synchronize_checkpoint_boundary": false, 
     "profile": false
 }
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   aio_config ................... {'block_size': 1048576, 'queue_depth': 8, 'intra_op_parallelism': 1, 'single_submit': False, 'overlap_events': True, 'use_gds': False}
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   amp_enabled .................. False
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   amp_params ................... False
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   autotuning_config ............ {
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   aio_config ................... {'block_size': 1048576, 'queue_depth': 8, 'intra_op_parallelism': 1, 'single_submit': False, 'overlap_events': True, 'use_gds': False}
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   amp_enabled .................. False
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   amp_params ................... False
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   autotuning_config ............ {
     "enabled": false, 
     "start_step": null, 
     "end_step": null, 
@@ -380,33 +350,33 @@ Parameter Offload - Persistent parameters statistics: param_count = 65, numel = 
     "min_train_micro_batch_size_per_gpu": 1, 
     "num_tuning_micro_batch_sizes": 3
 }
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   bfloat16_config .............. enabled=True immediate_grad_update=False check_grad_overflow=False
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   checkpoint_config ............ {'tag_validation': 'WARN', 'checkpoint_serialization': True, 'writer': None}
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   checkpoint_parallel_write_pipeline  False
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   checkpoint_tag_validation_enabled  True
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   checkpoint_tag_validation_fail  False
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   comms_config ................. <deepspeed.comm.config.DeepSpeedCommsConfig object at 0x7f639596b850>
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   communication_data_type ...... None
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   compile_config ............... deepcompile=False free_activation=False offload_activation=False offload_opt_states=False double_buffer=True symmetric_memory=False debug_log=False offload_parameters=False sync_before_reduce=False sync_after_reduce=False sync_before_allgather=False sync_after_allgather=False keep_int_input_tensors=True keep_all_input_tensors=False
-[2025-10-28 14:07:55,131] [INFO] [config.py:958:print]   compression_config ........... {'weight_quantization': {'shared_parameters': {'enabled': False, 'quantizer_kernel': False, 'schedule_offset': 0, 'quantize_groups': 1, 'quantize_verbose': False, 'quantization_type': 'symmetric', 'quantize_weight_in_forward': False, 'rounding': 'nearest', 'fp16_mixed_quantize': False, 'quantize_change_ratio': 0.001}, 'different_groups': {}}, 'activation_quantization': {'shared_parameters': {'enabled': False, 'quantization_type': 'symmetric', 'range_calibration': 'dynamic', 'schedule_offset': 1000}, 'different_groups': {}}, 'sparse_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'row_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'head_pruning': {'shared_parameters': {'enabled': False, 'method': 'topk', 'schedule_offset': 1000}, 'different_groups': {}}, 'channel_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'layer_reduction': {'enabled': False}}
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   curriculum_enabled_legacy .... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   curriculum_params_legacy ..... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   data_efficiency_config ....... {'enabled': False, 'seed': 1234, 'data_sampling': {'enabled': False, 'num_epochs': 1000, 'num_workers': 0, 'pin_memory': False, 'curriculum_learning': {'enabled': False}, 'dynamic_batching': {'enabled': False, 'lr_scaling_method': 'linear', 'min_batch_size': 1, 'max_batch_size': None, 'sequence_picking_order': 'dataloader', 'verbose': False}}, 'data_routing': {'enabled': False, 'random_ltd': {'enabled': False, 'layer_token_lr_schedule': {'enabled': False}}}}
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   data_efficiency_enabled ...... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   dataloader_drop_last ......... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   disable_allgather ............ False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   dump_state ................... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   eigenvalue_enabled ........... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   eigenvalue_gas_boundary_resolution  1
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   eigenvalue_layer_name ........ bert.encoder.layer
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   eigenvalue_layer_num ......... 0
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   eigenvalue_max_iter .......... 100
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   eigenvalue_stability ......... 1e-06
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   eigenvalue_tol ............... 0.01
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   eigenvalue_verbose ........... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   elasticity_enabled ........... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   float16_config ............... enabled=False auto_cast=False loss_scale=0.0 initial_scale_power=16 loss_scale_window=1000 hysteresis=2 consecutive_hysteresis=False min_loss_scale=1 fp16_master_weights_and_grads=False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   flops_profiler_config ........ {
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   bfloat16_config .............. enabled=True immediate_grad_update=False check_grad_overflow=False
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   checkpoint_config ............ {'tag_validation': 'WARN', 'checkpoint_serialization': True, 'writer': None}
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   checkpoint_parallel_write_pipeline  False
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   checkpoint_tag_validation_enabled  True
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   checkpoint_tag_validation_fail  False
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   comms_config ................. <deepspeed.comm.config.DeepSpeedCommsConfig object at 0x7f70c832cf10>
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   communication_data_type ...... None
+[2025-10-29 12:45:40,221] [INFO] [config.py:958:print]   compile_config ............... deepcompile=False free_activation=False offload_activation=False offload_opt_states=False double_buffer=True symmetric_memory=False debug_log=False offload_parameters=False sync_before_reduce=False sync_after_reduce=False sync_before_allgather=False sync_after_allgather=False keep_int_input_tensors=True keep_all_input_tensors=False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   compression_config ........... {'weight_quantization': {'shared_parameters': {'enabled': False, 'quantizer_kernel': False, 'schedule_offset': 0, 'quantize_groups': 1, 'quantize_verbose': False, 'quantization_type': 'symmetric', 'quantize_weight_in_forward': False, 'rounding': 'nearest', 'fp16_mixed_quantize': False, 'quantize_change_ratio': 0.001}, 'different_groups': {}}, 'activation_quantization': {'shared_parameters': {'enabled': False, 'quantization_type': 'symmetric', 'range_calibration': 'dynamic', 'schedule_offset': 1000}, 'different_groups': {}}, 'sparse_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'row_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'head_pruning': {'shared_parameters': {'enabled': False, 'method': 'topk', 'schedule_offset': 1000}, 'different_groups': {}}, 'channel_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'layer_reduction': {'enabled': False}}
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   curriculum_enabled_legacy .... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   curriculum_params_legacy ..... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   data_efficiency_config ....... {'enabled': False, 'seed': 1234, 'data_sampling': {'enabled': False, 'num_epochs': 1000, 'num_workers': 0, 'pin_memory': False, 'curriculum_learning': {'enabled': False}, 'dynamic_batching': {'enabled': False, 'lr_scaling_method': 'linear', 'min_batch_size': 1, 'max_batch_size': None, 'sequence_picking_order': 'dataloader', 'verbose': False}}, 'data_routing': {'enabled': False, 'random_ltd': {'enabled': False, 'layer_token_lr_schedule': {'enabled': False}}}}
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   data_efficiency_enabled ...... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   dataloader_drop_last ......... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   disable_allgather ............ False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   dump_state ................... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   eigenvalue_enabled ........... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   eigenvalue_gas_boundary_resolution  1
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   eigenvalue_layer_name ........ bert.encoder.layer
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   eigenvalue_layer_num ......... 0
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   eigenvalue_max_iter .......... 100
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   eigenvalue_stability ......... 1e-06
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   eigenvalue_tol ............... 0.01
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   eigenvalue_verbose ........... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   elasticity_enabled ........... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   float16_config ............... enabled=False auto_cast=False loss_scale=0.0 initial_scale_power=16 loss_scale_window=1000 hysteresis=2 consecutive_hysteresis=False min_loss_scale=1 fp16_master_weights_and_grads=False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   flops_profiler_config ........ {
     "enabled": false, 
     "recompute_fwd_factor": 0.0, 
     "profile_step": 1, 
@@ -415,19 +385,19 @@ Parameter Offload - Persistent parameters statistics: param_count = 65, numel = 
     "detailed": true, 
     "output_file": null
 }
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   global_rank .................. 0
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   grad_accum_dtype ............. None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   gradient_accumulation_steps .. 4
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   gradient_clipping ............ 1.0
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   gradient_predivide_factor .... 1.0
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   graph_harvesting ............. False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   hybrid_engine ................ enabled=False max_out_tokens=512 inference_tp_size=1 release_inference_cache=False pin_parameters=True tp_gather_partition_size=8
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   load_universal_checkpoint .... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   memory_breakdown ............. False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   mics_hierarchial_params_gather  False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   mics_shard_size .............. -1
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   monitor_config ............... tensorboard=TensorBoardConfig(enabled=False, output_path='', job_name='DeepSpeedJobName') comet=CometConfig(enabled=False, samples_log_interval=100, project=None, workspace=None, api_key=None, experiment_name=None, experiment_key=None, online=None, mode=None) wandb=WandbConfig(enabled=False, group=None, team=None, project='deepspeed') csv_monitor=CSVConfig(enabled=False, output_path='', job_name='DeepSpeedJobName')
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   nebula_config ................ {
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   global_rank .................. 0
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   grad_accum_dtype ............. None
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   gradient_accumulation_steps .. 4
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   gradient_clipping ............ 1.0
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   gradient_predivide_factor .... 1.0
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   graph_harvesting ............. False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   hybrid_engine ................ enabled=False max_out_tokens=512 inference_tp_size=1 release_inference_cache=False pin_parameters=True tp_gather_partition_size=8
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   load_universal_checkpoint .... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   memory_breakdown ............. False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   mics_hierarchial_params_gather  False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   mics_shard_size .............. -1
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   monitor_config ............... tensorboard=TensorBoardConfig(enabled=False, output_path='', job_name='DeepSpeedJobName') comet=CometConfig(enabled=False, samples_log_interval=100, project=None, workspace=None, api_key=None, experiment_name=None, experiment_key=None, online=None, mode=None) wandb=WandbConfig(enabled=False, group=None, team=None, project='deepspeed') csv_monitor=CSVConfig(enabled=False, output_path='', job_name='DeepSpeedJobName')
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   nebula_config ................ {
     "enabled": false, 
     "persistent_storage_path": null, 
     "persistent_time_interval": 100, 
@@ -435,37 +405,37 @@ Parameter Offload - Persistent parameters statistics: param_count = 65, numel = 
     "enable_nebula_load": true, 
     "load_path": null
 }
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   optimizer_legacy_fusion ...... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   optimizer_name ............... None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   optimizer_params ............. None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   pipeline ..................... {'stages': 'auto', 'partition': 'best', 'seed_layers': False, 'activation_checkpoint_interval': 0, 'pipe_partitioned': True, 'grad_partitioned': True}
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   pld_enabled .................. False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   pld_params ................... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   prescale_gradients ........... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   scheduler_name ............... None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   scheduler_params ............. None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   seq_parallel_communication_data_type  torch.float32
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   sparse_attention ............. None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   sparse_gradients_enabled ..... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   steps_per_print .............. inf
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   tensor_parallel_config ....... dtype=torch.float16 autotp_size=0 tp_overlap_comm=False tensor_parallel=TPConfig(tp_size=1, tp_grain_size=1, mpu=None, tp_group=None) injection_policy_tuple=None keep_module_on_host=False replace_with_kernel_inject=False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   timers_config ................ enabled=True synchronized=True
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   torch_autocast_dtype ......... None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   torch_autocast_enabled ....... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   torch_autocast_lower_precision_safe_modules  None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   train_batch_size ............. 512
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   train_micro_batch_size_per_gpu  16
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   use_data_before_expert_parallel_  False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   use_node_local_storage ....... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   wall_clock_breakdown ......... False
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   weight_quantization_config ... None
-[2025-10-28 14:07:55,132] [INFO] [config.py:958:print]   world_size ................... 8
-[2025-10-28 14:07:55,133] [INFO] [config.py:958:print]   zero_allow_untested_optimizer  True
-[2025-10-28 14:07:55,133] [INFO] [config.py:958:print]   zero_config .................. stage=3 contiguous_gradients=True reduce_scatter=True reduce_bucket_size=500000000 use_multi_rank_bucket_allreduce=True allgather_partitions=True allgather_bucket_size=500000000 overlap_comm=True load_from_fp32_weights=True elastic_checkpoint=False offload_param=DeepSpeedZeroOffloadParamConfig(device='cpu', nvme_path=None, buffer_count=5, buffer_size=100000000, max_in_cpu=1000000000, pin_memory=False) offload_optimizer=DeepSpeedZeroOffloadOptimizerConfig(device='cpu', nvme_path=None, buffer_count=4, pin_memory=False, pipeline_read=False, pipeline_write=False, fast_init=False, ratio=1.0) sub_group_size=1000000000 cpu_offload_param=None cpu_offload_use_pin_memory=None cpu_offload=None prefetch_bucket_size=50000000 param_persistence_threshold=100000 model_persistence_threshold=9223372036854775807 max_live_parameters=1000000000 max_reuse_distance=1000000000 gather_16bit_weights_on_model_save=True module_granularity_threshold=0 use_all_reduce_for_fetch_params=False stage3_gather_fp16_weights_on_model_save=False ignore_unused_parameters=True legacy_stage1=False round_robin_gradients=False zero_hpz_partition_size=1 zero_quantized_weights=False zero_quantized_nontrainable_weights=False zero_quantized_gradients=False zeropp_loco_param=None mics_shard_size=-1 mics_hierarchical_params_gather=False memory_efficient_linear=True pipeline_loading_checkpoint=False override_module_apply=True log_trace_cache_warnings=False
-[2025-10-28 14:07:55,133] [INFO] [config.py:958:print]   zero_enabled ................. True
-[2025-10-28 14:07:55,133] [INFO] [config.py:958:print]   zero_force_ds_cpu_optimizer .. True
-[2025-10-28 14:07:55,133] [INFO] [config.py:958:print]   zero_optimization_stage ...... 3
-[2025-10-28 14:07:55,133] [INFO] [config.py:944:print_user_config]   json = {
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   optimizer_legacy_fusion ...... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   optimizer_name ............... None
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   optimizer_params ............. None
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   pipeline ..................... {'stages': 'auto', 'partition': 'best', 'seed_layers': False, 'activation_checkpoint_interval': 0, 'pipe_partitioned': True, 'grad_partitioned': True}
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   pld_enabled .................. False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   pld_params ................... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   prescale_gradients ........... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   scheduler_name ............... None
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   scheduler_params ............. None
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   seq_parallel_communication_data_type  torch.float32
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   sparse_attention ............. None
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   sparse_gradients_enabled ..... False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   steps_per_print .............. inf
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   tensor_parallel_config ....... dtype=torch.float16 autotp_size=0 tp_overlap_comm=False tensor_parallel=TPConfig(tp_size=1, tp_grain_size=1, mpu=None, tp_group=None) injection_policy_tuple=None keep_module_on_host=False replace_with_kernel_inject=False
+[2025-10-29 12:45:40,222] [INFO] [config.py:958:print]   timers_config ................ enabled=True synchronized=True
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   torch_autocast_dtype ......... None
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   torch_autocast_enabled ....... False
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   torch_autocast_lower_precision_safe_modules  None
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   train_batch_size ............. 512
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   train_micro_batch_size_per_gpu  16
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   use_data_before_expert_parallel_  False
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   use_node_local_storage ....... False
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   wall_clock_breakdown ......... False
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   weight_quantization_config ... None
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   world_size ................... 8
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   zero_allow_untested_optimizer  True
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   zero_config .................. stage=3 contiguous_gradients=True reduce_scatter=True reduce_bucket_size=500000000 use_multi_rank_bucket_allreduce=True allgather_partitions=True allgather_bucket_size=500000000 overlap_comm=True load_from_fp32_weights=True elastic_checkpoint=False offload_param=DeepSpeedZeroOffloadParamConfig(device='cpu', nvme_path=None, buffer_count=5, buffer_size=100000000, max_in_cpu=1000000000, pin_memory=False) offload_optimizer=DeepSpeedZeroOffloadOptimizerConfig(device='cpu', nvme_path=None, buffer_count=4, pin_memory=False, pipeline_read=False, pipeline_write=False, fast_init=False, ratio=1.0) sub_group_size=1000000000 cpu_offload_param=None cpu_offload_use_pin_memory=None cpu_offload=None prefetch_bucket_size=50000000 param_persistence_threshold=100000 model_persistence_threshold=9223372036854775807 max_live_parameters=1000000000 max_reuse_distance=1000000000 gather_16bit_weights_on_model_save=True module_granularity_threshold=0 use_all_reduce_for_fetch_params=False stage3_gather_fp16_weights_on_model_save=False ignore_unused_parameters=True legacy_stage1=False round_robin_gradients=False zero_hpz_partition_size=1 zero_quantized_weights=False zero_quantized_nontrainable_weights=False zero_quantized_gradients=False zeropp_loco_param=None mics_shard_size=-1 mics_hierarchical_params_gather=False memory_efficient_linear=True pipeline_loading_checkpoint=False override_module_apply=True log_trace_cache_warnings=False
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   zero_enabled ................. True
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   zero_force_ds_cpu_optimizer .. True
+[2025-10-29 12:45:40,223] [INFO] [config.py:958:print]   zero_optimization_stage ...... 3
+[2025-10-29 12:45:40,223] [INFO] [config.py:944:print_user_config]   json = {
     "train_batch_size": 512, 
     "train_micro_batch_size_per_gpu": 16, 
     "gradient_accumulation_steps": 4, 
@@ -491,179 +461,36 @@ Parameter Offload - Persistent parameters statistics: param_count = 65, numel = 
     }, 
     "zero_allow_untested_optimizer": true
 }
-10/28/2025 14:07:55 - INFO - __main__ - ***** Running training *****
-10/28/2025 14:07:55 - INFO - __main__ -   Num response = 48203
-10/28/2025 14:07:55 - INFO - __main__ -   Num training data = 48203
-10/28/2025 14:07:55 - INFO - __main__ -   Num training steps = 2376
-10/28/2025 14:07:55 - INFO - __main__ -   Instantaneous batch size per device = 16
-10/28/2025 14:07:55 - INFO - __main__ -   Total train batch size (w. parallel, distributed & accumulation) = 512
-10/28/2025 14:07:55 - INFO - __main__ -   Gradient Accumulation steps = 4
-10/28/2025 14:07:55 - INFO - __main__ -   Latent Recursive Training: R=2 (latent thinking steps)
+10/29/2025 12:45:40 - INFO - __main__ - ***** Running training *****
+10/29/2025 12:45:40 - INFO - __main__ -   Num response = 4
+10/29/2025 12:45:40 - INFO - __main__ -   Num training data = 4
+10/29/2025 12:45:40 - INFO - __main__ -   Num training steps = 26
+10/29/2025 12:45:40 - INFO - __main__ -   Instantaneous batch size per device = 16
+10/29/2025 12:45:40 - INFO - __main__ -   Total train batch size (w. parallel, distributed & accumulation) = 512
+10/29/2025 12:45:40 - INFO - __main__ -   Gradient Accumulation steps = 4
   0%|          | 0/25 [00:00<?, ?it/s]
-Epoch 1/25:   0%|          | 0/377 [00:00<?, ?it/s][A
-Epoch 1/25:   0%|          | 1/377 [00:09<58:57,  9.41s/it][A
-Epoch 1/25:   1%|          | 2/377 [00:14<43:32,  6.97s/it][A{'train/loss': 2.488969326019287, 'train/lr': 9.999720280459576e-06, 'train/batch_token_acc': 0.08158220014637553}
-{'train/loss': 2.959662437438965, 'train/lr': 9.999720280459576e-06, 'train/batch_token_acc': 0.0749999998828125}
-{'train/loss': 4.1203765869140625, 'train/lr': 9.999720280459576e-06, 'train/batch_token_acc': 0.08695652162793284}
-{'train/loss': 2.8240244388580322, 'train/lr': 9.999720280459576e-06, 'train/batch_token_acc': 0.08985024943452538}
-{'train/loss': 2.7747042179107666, 'train/lr': 9.999720280459576e-06, 'train/batch_token_acc': 0.07680250771661049}
-{'train/loss': 3.431313991546631, 'train/lr': 9.999720280459576e-06, 'train/batch_token_acc': 0.10207100576616715}
-{'train/loss': 3.300886631011963, 'train/lr': 9.999720280459576e-06, 'train/batch_token_acc': 0.07599999989866667}
-{'train/loss': 2.6415512561798096, 'train/lr': 9.999720280459576e-06, 'train/batch_token_acc': 0.08564814804901835}
-4.345708131790161
-3.4317848682403564
-3.590672254562378
-3.8826571702957153
-10/28/2025 14:08:16 - INFO - __main__ - [Mask region acc] 5.44% 
-2.9705970287323
-3.551494598388672
-3.635263204574585
-2.761276602745056
-
-Epoch 1/25:   1%|          | 3/377 [00:21<44:07,  7.08s/it][A
-Epoch 1/25:   1%|          | 4/377 [00:27<40:54,  6.58s/it][A
-Epoch 1/25:   1%|▏         | 5/377 [00:33<38:07,  6.15s/it][A
-Epoch 1/25:   2%|▏         | 6/377 [00:39<37:53,  6.13s/it][A
-Epoch 1/25:   2%|▏         | 7/377 [00:44<37:01,  6.00s/it][A
-Epoch 1/25:   2%|▏         | 8/377 [00:50<36:30,  5.94s/it][A
-Epoch 1/25:   2%|▏         | 9/377 [00:55<35:01,  5.71s/it][A
-Epoch 1/25:   3%|▎         | 10/377 [01:00<33:33,  5.49s/it][A
-Epoch 1/25:   3%|▎         | 11/377 [01:07<35:39,  5.85s/it][A
-Epoch 1/25:   3%|▎         | 12/377 [01:13<35:30,  5.84s/it][A
-Epoch 1/25:   3%|▎         | 13/377 [01:18<34:01,  5.61s/it][A
-Epoch 1/25:   4%|▎         | 14/377 [01:24<34:53,  5.77s/it][A
-Epoch 1/25:   4%|▍         | 15/377 [01:30<34:36,  5.74s/it][A
-Epoch 1/25:   4%|▍         | 16/377 [01:36<35:24,  5.88s/it][A
-Epoch 1/25:   5%|▍         | 17/377 [01:41<34:16,  5.71s/it][A
-Epoch 1/25:   5%|▍         | 18/377 [01:46<32:51,  5.49s/it][A
-Epoch 1/25:   5%|▌         | 19/377 [01:52<32:34,  5.46s/it][A
-Epoch 1/25:   5%|▌         | 20/377 [01:57<33:04,  5.56s/it][A
-Epoch 1/25:   6%|▌         | 21/377 [02:03<32:47,  5.53s/it][A
-Epoch 1/25:   6%|▌         | 22/377 [02:08<32:21,  5.47s/it][A{'train/loss': 2.580031394958496, 'train/lr': 9.989933382359423e-06, 'train/batch_token_acc': 0.13567839173253202}
-{'train/loss': 3.064523458480835, 'train/lr': 9.989933382359423e-06, 'train/batch_token_acc': 0.10017574674837303}
-{'train/loss': 2.259143352508545, 'train/lr': 9.989933382359423e-06, 'train/batch_token_acc': 0.10365853637467777}
-{'train/loss': 3.0278546810150146, 'train/lr': 9.989933382359423e-06, 'train/batch_token_acc': 0.11081081066106648}
-{'train/loss': 2.5642197132110596, 'train/lr': 9.989933382359423e-06, 'train/batch_token_acc': 0.12214611858202498}
-{'train/loss': 2.215343475341797, 'train/lr': 9.989933382359423e-06, 'train/batch_token_acc': 0.08973080748780578}
-{'train/loss': 2.3323323726654053, 'train/lr': 9.989933382359423e-06, 'train/batch_token_acc': 0.0843060958699013}
-{'train/loss': 1.9805805683135986, 'train/lr': 9.989933382359423e-06, 'train/batch_token_acc': 0.11791730456674226}
-
-Epoch 1/25:   6%|▌         | 23/377 [02:14<32:05,  5.44s/it][A
-Epoch 1/25:   6%|▋         | 24/377 [02:19<32:18,  5.49s/it][A
-Epoch 1/25:   7%|▋         | 25/377 [02:24<31:10,  5.31s/it][A
-Epoch 1/25:   7%|▋         | 26/377 [02:29<30:16,  5.18s/it][A
-Epoch 1/25:   7%|▋         | 27/377 [02:35<32:06,  5.50s/it][A
-Epoch 1/25:   7%|▋         | 28/377 [02:41<33:01,  5.68s/it][A
-Epoch 1/25:   8%|▊         | 29/377 [02:46<31:50,  5.49s/it][A
-Epoch 1/25:   8%|▊         | 30/377 [02:52<31:45,  5.49s/it][A
-Epoch 1/25:   8%|▊         | 31/377 [02:57<31:38,  5.49s/it][A
-Epoch 1/25:   8%|▊         | 32/377 [03:03<31:17,  5.44s/it][A
-Epoch 1/25:   9%|▉         | 33/377 [03:08<30:27,  5.31s/it][A
-Epoch 1/25:   9%|▉         | 34/377 [03:13<29:34,  5.17s/it][A
-Epoch 1/25:   9%|▉         | 35/377 [03:18<30:14,  5.31s/it][A
-Epoch 1/25:  10%|▉         | 36/377 [03:23<29:27,  5.18s/it][A
-Epoch 1/25:  10%|▉         | 37/377 [03:28<28:40,  5.06s/it][A
-Epoch 1/25:  10%|█         | 38/377 [03:33<28:08,  4.98s/it][A
-Epoch 1/25:  10%|█         | 39/377 [03:38<29:02,  5.16s/it][A
-Epoch 1/25:  11%|█         | 40/377 [03:44<29:36,  5.27s/it][A
-Epoch 1/25:  11%|█         | 41/377 [03:49<28:41,  5.12s/it][A
-Epoch 1/25:  11%|█         | 42/377 [03:53<27:51,  4.99s/it][A{'train/loss': 2.3129873275756836, 'train/lr': 9.966191788709716e-06, 'train/batch_token_acc': 0.17073170705681143}{'train/loss': 1.9881706237792969, 'train/lr': 9.966191788709716e-06, 'train/batch_token_acc': 0.1397694522481708}
-
-{'train/loss': 2.2180628776550293, 'train/lr': 9.966191788709716e-06, 'train/batch_token_acc': 0.15158371023576503}
-{'train/loss': 1.7244760990142822, 'train/lr': 9.966191788709716e-06, 'train/batch_token_acc': 0.1455223877882045}{'train/loss': 1.7582058906555176, 'train/lr': 9.966191788709716e-06, 'train/batch_token_acc': 0.15151515130645296}
-
-{'train/loss': 2.02286958694458, 'train/lr': 9.966191788709716e-06, 'train/batch_token_acc': 0.14831804258666967}
-{'train/loss': 2.282700538635254, 'train/lr': 9.966191788709716e-06, 'train/batch_token_acc': 0.1415816324724724}
-{'train/loss': 1.9482128620147705, 'train/lr': 9.966191788709716e-06, 'train/batch_token_acc': 0.15348288057440038}
-
-Epoch 1/25:  11%|█▏        | 43/377 [03:59<28:29,  5.12s/it][A
-Epoch 1/25:  12%|█▏        | 44/377 [04:04<29:06,  5.24s/it][A
-Epoch 1/25:  12%|█▏        | 45/377 [04:10<29:18,  5.30s/it][A
-Epoch 1/25:  12%|█▏        | 46/377 [04:15<28:39,  5.20s/it][A
-Epoch 1/25:  12%|█▏        | 47/377 [04:20<28:14,  5.13s/it][A
-Epoch 1/25:  13%|█▎        | 48/377 [04:25<29:00,  5.29s/it][A
-Epoch 1/25:  13%|█▎        | 49/377 [04:30<28:36,  5.23s/it][A10/28/2025 14:12:26 - INFO - __main__ - 
-================================================================================
-10/28/2025 14:12:26 - INFO - __main__ - [DEBUG] Step 50 - Input Inspection
-10/28/2025 14:12:26 - INFO - __main__ - ================================================================================
-10/28/2025 14:12:26 - INFO - __main__ - Batch size: 16, Sequence length: 281
-10/28/2025 14:12:26 - INFO - __main__ - Step 50 Loss: 0.6001728773117065
-
-Epoch 1/25:  13%|█▎        | 50/377 [04:35<27:50,  5.11s/it][A
-Epoch 1/25:  14%|█▎        | 51/377 [04:40<28:12,  5.19s/it][A
-Epoch 1/25:  14%|█▍        | 52/377 [04:46<28:02,  5.18s/it][A
-Epoch 1/25:  14%|█▍        | 53/377 [04:50<27:20,  5.06s/it][A
-Epoch 1/25:  14%|█▍        | 54/377 [04:55<26:20,  4.89s/it][A
-Epoch 1/25:  15%|█▍        | 55/377 [05:00<26:27,  4.93s/it][A
-Epoch 1/25:  15%|█▍        | 56/377 [05:05<26:51,  5.02s/it][A
-Epoch 1/25:  15%|█▌        | 57/377 [05:10<26:10,  4.91s/it][A
-Epoch 1/25:  15%|█▌        | 58/377 [05:15<25:49,  4.86s/it][A
-Epoch 1/25:  16%|█▌        | 59/377 [05:20<26:42,  5.04s/it][A
-Epoch 1/25:  16%|█▌        | 60/377 [05:26<27:57,  5.29s/it][A
-Epoch 1/25:  16%|█▌        | 61/377 [05:31<27:02,  5.13s/it][A
-Epoch 1/25:  16%|█▋        | 62/377 [05:36<27:28,  5.23s/it][A{'train/loss': 2.0761685371398926, 'train/lr': 9.928561894527354e-06, 'train/batch_token_acc': 0.16994381998603397}
-{'train/loss': 1.911035418510437, 'train/lr': 9.928561894527354e-06, 'train/batch_token_acc': 0.20637898647958913}
-{'train/loss': 2.1364283561706543, 'train/lr': 9.928561894527354e-06, 'train/batch_token_acc': 0.17510259893966812}
-{'train/loss': 2.386448383331299, 'train/lr': 9.928561894527354e-06, 'train/batch_token_acc': 0.20054945027397053}
-{'train/loss': 2.4893221855163574, 'train/lr': 9.928561894527354e-06, 'train/batch_token_acc': 0.18681318651991652}
-{'train/loss': 2.364865303039551, 'train/lr': 9.928561894527354e-06, 'train/batch_token_acc': 0.16643159355933485}
-{'train/loss': 2.0035560131073, 'train/lr': 9.928561894527354e-06, 'train/batch_token_acc': 0.1932432429821037}
-{'train/loss': 2.8979597091674805, 'train/lr': 9.928561894527354e-06, 'train/batch_token_acc': 0.15819861413602931}
-
-Epoch 1/25:  17%|█▋        | 63/377 [05:42<27:46,  5.31s/it][A
-Epoch 1/25:  17%|█▋        | 64/377 [05:47<27:34,  5.28s/it][A
-Epoch 1/25:  17%|█▋        | 65/377 [05:52<27:07,  5.22s/it][A
-Epoch 1/25:  18%|█▊        | 66/377 [05:57<26:06,  5.04s/it][A
-Epoch 1/25:  18%|█▊        | 67/377 [06:02<26:31,  5.13s/it][A
-Epoch 1/25:  18%|█▊        | 68/377 [06:08<27:19,  5.31s/it][A
-Epoch 1/25:  18%|█▊        | 69/377 [06:13<26:44,  5.21s/it][A
-Epoch 1/25:  19%|█▊        | 70/377 [06:18<26:37,  5.20s/it][A
-Epoch 1/25:  19%|█▉        | 71/377 [06:23<27:19,  5.36s/it][A
-Epoch 1/25:  19%|█▉        | 72/377 [06:29<26:51,  5.29s/it][A
-Epoch 1/25:  19%|█▉        | 73/377 [06:34<27:00,  5.33s/it][A
-Epoch 1/25:  20%|█▉        | 74/377 [06:39<26:36,  5.27s/it][A
-Epoch 1/25:  20%|█▉        | 75/377 [06:44<26:18,  5.23s/it][A
-Epoch 1/25:  20%|██        | 76/377 [06:50<26:37,  5.31s/it][A
-Epoch 1/25:  20%|██        | 77/377 [06:55<26:48,  5.36s/it][A
-Epoch 1/25:  21%|██        | 78/377 [07:00<25:25,  5.10s/it][A
-Epoch 1/25:  21%|██        | 79/377 [07:05<25:37,  5.16s/it][A
-Epoch 1/25:  21%|██        | 80/377 [07:11<26:38,  5.38s/it][A
-Epoch 1/25:  21%|██▏       | 81/377 [07:16<26:21,  5.34s/it][A
-Epoch 1/25:  22%|██▏       | 82/377 [07:21<25:13,  5.13s/it][A{'train/loss': 1.9200456142425537, 'train/lr': 9.877148934427037e-06, 'train/batch_token_acc': 0.3260188082664282}{'train/loss': 1.7033717632293701, 'train/lr': 9.877148934427037e-06, 'train/batch_token_acc': 0.3373983735265605}{'train/loss': 1.8022197484970093, 'train/lr': 9.877148934427037e-06, 'train/batch_token_acc': 0.35074626822046484}
-
-
-{'train/loss': 1.197143793106079, 'train/lr': 9.877148934427037e-06, 'train/batch_token_acc': 0.3793103443043995}
-{'train/loss': 1.3219566345214844, 'train/lr': 9.877148934427037e-06, 'train/batch_token_acc': 0.3519813515711173}
-{'train/loss': 1.390519380569458, 'train/lr': 9.877148934427037e-06, 'train/batch_token_acc': 0.3632075467415005}{'train/loss': 1.713091254234314, 'train/lr': 9.877148934427037e-06, 'train/batch_token_acc': 0.3987823433808488}
-
-{'train/loss': 1.4866431951522827, 'train/lr': 9.877148934427037e-06, 'train/batch_token_acc': 0.35524475474790945}
-
-Epoch 1/25:  22%|██▏       | 83/377 [07:26<25:34,  5.22s/it][A
-Epoch 1/25:  22%|██▏       | 84/377 [07:32<25:47,  5.28s/it][A
-Epoch 1/25:  23%|██▎       | 85/377 [07:37<25:13,  5.18s/it][A
-Epoch 1/25:  23%|██▎       | 86/377 [07:42<25:32,  5.27s/it][A
-Epoch 1/25:  23%|██▎       | 87/377 [07:48<26:01,  5.38s/it][A
-Epoch 1/25:  23%|██▎       | 88/377 [07:53<25:10,  5.23s/it][A
-Epoch 1/25:  24%|██▎       | 89/377 [07:58<24:40,  5.14s/it][A
-Epoch 1/25:  24%|██▍       | 90/377 [08:02<23:43,  4.96s/it][A
-Epoch 1/25:  24%|██▍       | 91/377 [08:08<24:41,  5.18s/it][A
-Epoch 1/25:  24%|██▍       | 92/377 [08:14<25:58,  5.47s/it][AW1028 14:16:12.999000 17082 site-packages/torch/distributed/elastic/agent/server/api.py:719] Received 2 death signal, shutting down workers
-W1028 14:16:13.000000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17305 closing signal SIGINT
-W1028 14:16:13.001000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17306 closing signal SIGINT
-W1028 14:16:13.001000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17307 closing signal SIGINT
-W1028 14:16:13.001000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17308 closing signal SIGINT
-W1028 14:16:13.001000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17309 closing signal SIGINT
-W1028 14:16:13.001000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17310 closing signal SIGINT
-W1028 14:16:13.001000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17311 closing signal SIGINT
-W1028 14:16:13.002000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17312 closing signal SIGINT
-W1028 14:16:13.476000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17305 closing signal SIGTERM
-W1028 14:16:13.481000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17306 closing signal SIGTERM
-W1028 14:16:13.486000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17307 closing signal SIGTERM
-W1028 14:16:13.489000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17308 closing signal SIGTERM
-W1028 14:16:13.493000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17309 closing signal SIGTERM
-W1028 14:16:13.496000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17310 closing signal SIGTERM
-W1028 14:16:13.500000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17311 closing signal SIGTERM
-W1028 14:16:13.504000 17082 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 17312 closing signal SIGTERM
+Epoch 1/25:   0%|          | 0/1 [00:00<?, ?it/s][A
+Epoch 1/25: 100%|██████████| 1/1 [00:28<00:00, 28.84s/it][AEpoch 1/25: 100%|██████████| 1/1 [00:28<00:00, 28.84s/it]
+  4%|▍         | 1/25 [00:40<16:11, 40.49s/it]  4%|▍         | 1/25 [00:40<16:11, 40.49s/it]  4%|▍         | 1/25 [00:40<16:11, 40.50s/it]  4%|▍         | 1/25 [00:40<16:11, 40.49s/it]  4%|▍         | 1/25 [00:40<16:11, 40.50s/it]  4%|▍         | 1/25 [00:40<16:11, 40.49s/it]  4%|▍         | 1/25 [00:40<16:11, 40.49s/it]10/29/2025 12:46:35 - INFO - __main__ - Copied tokenizer files from /mnt/shared-storage-user/formalverification-shared/gaoxin/models/LLaDA-8B-Instruct
+10/29/2025 12:46:35 - INFO - __main__ - Saved model + tokenizer to /mnt/shared-storage-user/formalverification-shared/gaoxin/projects/sft_llada_recursive3_2025-10-26-20:00/ckpt/checkpoint-epoch1-step1
+  4%|▍         | 1/25 [00:55<22:13, 55.57s/it]
+Epoch 2/25:   0%|          | 0/1 [00:00<?, ?it/s][AW1029 12:46:47.134000 208975 site-packages/torch/distributed/elastic/agent/server/api.py:719] Received 2 death signal, shutting down workers
+W1029 12:46:47.136000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209198 closing signal SIGINT
+W1029 12:46:47.175000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209199 closing signal SIGINT
+W1029 12:46:47.175000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209200 closing signal SIGINT
+W1029 12:46:47.176000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209201 closing signal SIGINT
+W1029 12:46:47.176000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209202 closing signal SIGINT
+W1029 12:46:47.176000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209203 closing signal SIGINT
+W1029 12:46:47.176000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209204 closing signal SIGINT
+W1029 12:46:47.176000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209205 closing signal SIGINT
+W1029 12:46:47.410000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209198 closing signal SIGTERM
+W1029 12:46:47.414000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209199 closing signal SIGTERM
+W1029 12:46:47.418000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209200 closing signal SIGTERM
+W1029 12:46:47.422000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209201 closing signal SIGTERM
+W1029 12:46:47.424000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209202 closing signal SIGTERM
+W1029 12:46:47.436000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209203 closing signal SIGTERM
+W1029 12:46:47.447000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209204 closing signal SIGTERM
+W1029 12:46:47.451000 208975 site-packages/torch/distributed/elastic/multiprocessing/api.py:900] Sending process 209205 closing signal SIGTERM
 Traceback (most recent call last):
   File "/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/distributed/elastic/agent/server/api.py", line 711, in run
     result = self._invoke_run(role)
@@ -672,7 +499,7 @@ Traceback (most recent call last):
     time.sleep(monitor_interval)
   File "/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 84, in _terminate_process_handler
     raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
-torch.distributed.elastic.multiprocessing.api.SignalException: Process 17082 got signal: 2
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 208975 got signal: 2
 
 During handling of the above exception, another exception occurred:
 
@@ -692,7 +519,7 @@ Traceback (most recent call last):
     time.sleep(delay)
   File "/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 84, in _terminate_process_handler
     raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
-torch.distributed.elastic.multiprocessing.api.SignalException: Process 17082 got signal: 2
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 208975 got signal: 2
 
 During handling of the above exception, another exception occurred:
 
@@ -732,8 +559,8 @@ Traceback (most recent call last):
     time.sleep(delay)
   File "/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 84, in _terminate_process_handler
     raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
-torch.distributed.elastic.multiprocessing.api.SignalException: Process 17082 got signal: 2
-Exception ignored in atexit callback: <function shutdown_compile_workers at 0x7ff5425f2840>
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 208975 got signal: 2
+Exception ignored in atexit callback: <function shutdown_compile_workers at 0x7f07d2cea840>
 Traceback (most recent call last):
   File "/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/_inductor/async_compile.py", line 113, in shutdown_compile_workers
     pool.shutdown()
@@ -746,4 +573,4 @@ Traceback (most recent call last):
     time.sleep(delay)
   File "/mnt/shared-storage-user/gaoxin1/miniconda3/envs/dlm/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 84, in _terminate_process_handler
     raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
-torch.distributed.elastic.multiprocessing.api.SignalException: Process 17082 got signal: 2
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 208975 got signal: 2

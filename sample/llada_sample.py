@@ -144,7 +144,7 @@ def generate_with_prefix_cache1(
 @torch.no_grad()
 def generate_with_prefix_cache2(
         model, prompt,
-        gen_length, block_length, latent_recursive_steps, unmask_token_number_per_step, temperature, 
+        gen_length, block_length, H_cycles, L_cycles, halt_max_steps, unmask_token_number_per_step, temperature, 
         target, mask_id, further_horizon, use_cache, unmask_threshold, rank
     ) -> DiffusionOutput:
 
@@ -191,7 +191,13 @@ def generate_with_prefix_cache2(
             )
             pkv = new_pkv
         else:
-            _, logits = model.forward_recursive_reasoning(x, H_cycles=latent_recursive_steps, L_cycles=latent_recursive_steps, use_cache=False)
+            # 1. Get initial hidden states
+            hidden_states = model.model._input_embedding(x)
+            carry = model.init_carry(hidden_states)
+
+            for _ in range(halt_max_steps):
+                carry, logits = model.forward_recursive_reasoning(carry, hidden_states, 
+                                        H_cycles=H_cycles, L_cycles=L_cycles, use_cache=False)
         
         mask_all = (x == mask_id)
         mask_all[:, e:] = 0
@@ -226,7 +232,14 @@ def generate_with_prefix_cache2(
                         mask_blk, x[:, s:], num_transfer[:, 0], unmask_threshold)
                     x[:, s:][tr_idx] = x0[tr_idx]
             else:
-                _, logits = model.forward_recursive_reasoning(x, H_cycles=latent_recursive_steps, L_cycles=latent_recursive_steps, use_cache=False)
+                # 1. Get initial hidden states
+                hidden_states = model.model._input_embedding(x)
+                carry = model.init_carry(hidden_states)
+
+                for _ in range(halt_max_steps):
+                    carry, logits = model.forward_recursive_reasoning(carry, hidden_states, 
+                                                H_cycles=H_cycles, L_cycles=L_cycles, use_cache=False)
+            
                 logits = logits[:, s:]
                 x0, tr_idx = get_transfer_index(
                     logits, temperature, target,
@@ -306,8 +319,8 @@ def get_prompt(data_i):
 def extract_final_boxed_answer(s: str):
     if '<|eot_id|>' in s:
         s = s.split('<|eot_id|>')[0]
-    elif '<|endoftext|>' in s:
-        s = s.split('<|endoftext|>')[0]
+    # elif '<|endoftext|>' in s:
+    #     s = s.split('<|endoftext|>')[0]
     tag = r'\boxed{'
     start = s.rfind(tag)          # last \boxed{
     if start == -1:
@@ -353,10 +366,13 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
     device = torch.device(f"cuda:{rank}")
 
     # Check if we need latent recursive model
-    latent_recursive_steps = config.rollout.get("R", 0)
+    H_cycles = config.rollout.get("H_cycles", 1)
+    L_cycles = config.rollout.get("L_cycles", 1)
+    halt_max_steps = config.rollout.get("halt_max_steps", 1)
+    # latent_recursive_steps = config.rollout.get("R", 0)
 
     # load model once
-    if latent_recursive_steps > 0:
+    if H_cycles > 0:
         # Load recursive model
         from llada.modeling_llada import LLaDAModelLM, LLaDAConfig
         from llada.modeling_recursive_llada import LLaDAModelLM as LLaDAModelLMRecursive
@@ -365,7 +381,9 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         model_config = LLaDAConfig.from_pretrained(pretrained_model)
         model_config.use_cache = config.rollout.use_cache  
         model_config.use_latent_recursive = config.model.use_latent_recursive
-        model_config.max_latent_recursive_steps = latent_recursive_steps
+        model_config.H_cycles = H_cycles
+        model_config.L_cycles = L_cycles
+        model_config.halt_max_steps = halt_max_steps
 
         model_gpu = (LLaDAModelLMRecursive
                      .from_pretrained(pretrained_model,
@@ -377,7 +395,7 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         
         low_level_end_idx = config.model.get('low_level_end_idx', 0)
         
-        model_gpu.model.low_level_end_idx = low_level_end_idx
+        model_gpu.low_level_end_idx = low_level_end_idx
         
     else:
         # Load standard model
@@ -419,7 +437,7 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
             out = generate_with_prefix_cache2(
                 model_gpu, input_ids,
                 gen_length=config.rollout.max_gen_length,
-                block_length=config.rollout.block_size, latent_recursive_steps=latent_recursive_steps, 
+                block_length=config.rollout.block_size, H_cycles=H_cycles, L_cycles=L_cycles, halt_max_steps=halt_max_steps,
                 unmask_token_number_per_step=unmask_token_number_per_step,
                 temperature=config.rollout.temperature,
                 target=config.rollout.target, mask_id=mask_id, further_horizon=config.rollout.further_horizon,
@@ -427,7 +445,6 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
                 rank=rank
             )
         else:
-            print("正常forward")
             out = generate_with_prefix_cache1(
                 model_gpu, input_ids,
                 steps=config.rollout.steps, gen_length=config.rollout.max_gen_length,
@@ -505,7 +522,7 @@ if __name__ == "__main__":
     with open("../data/" + dataset + ".json", 'r') as f:
         data = json.load(f)
     
-    data = [data[i] for i in range(128)]
+    # data = [data[i] for i in range(8)]
     
     num_node = config.experiment.num_node
     node_index = config.experiment.node_index
@@ -644,7 +661,7 @@ if __name__ == "__main__":
             extracted_output = extract_final_boxed_answer(full_output)
         index_i = index_list[i]
         data[index_i]["full_output"].append(full_output)
-        # data[index_i]["step_map"].append(restored_step_maps[i])
+        data[index_i]["step_map"].append(restored_step_maps[i])
         data[index_i]["extracted_output"].append(extracted_output)
         data[index_i]["response_length"].append(response_length[i])
         i += 1

@@ -4,7 +4,7 @@ experiment:
     node_index: 0 # no need to change
 
 model:
-    model_path: "/mnt/shared-storage-user/gaoxin1/project/dLLM-RL/sft_llada_recursive2/ckpt/checkpoint-epoch11-step1034" # absolute path of your model
+    model_path: "/mnt/shared-storage-user/formalverification-shared/gaoxin/projects/sft_llada_recursive3_2025-10-26-20:00/ckpt/optimized_recursive" # absolute path of your model
     model_base: "llada" # set llada for LLaDA and MMaDA
     # Latent Recursive parameters
     use_latent_recursive: True
@@ -12,23 +12,23 @@ model:
 
 # dataset you want to eval on, you need to download first, you can also modify your own dataset, see instructions in ./data
 dataset:
-    eval_dataset: "GSM8K-aug" #"MBPP""MATH500""GSM8K""AIME2024""GPQA""LiveCodeBench""HumanEval""LiveBench"
+    eval_dataset: "GSM8K-aug-train" #"MBPP""MATH500""GSM8K""AIME2024""GPQA""LiveCodeBench""HumanEval""LiveBench"
     data_type: "math" #"code""math"
 
 execute:
     num_chunk: 128 # batch size of executing codes in coding eval tasks
 
 rollout:
-    num_response_per_task: 1
+    num_response_per_task: 10
     temperature: 0.1
-    max_gen_length: 1024
+    max_gen_length: 512
     steps: 512
     batch_size: 1
     remasking_strategy: "low_confidence_static" #"low_confidence_static""low_confidence_dynamic"
     target: "confidence" # target to decide which tokens to unmask, eg. confidence, margin_confidence and neg_entropy
     dynamic_threshold: null #0.95 # no use for "low_confidence_static"
     further_horizon: 128 # We find that performing the forward pass with a further horizon, eg. 128, (kv-cache sequence before current block, while doing full forward for currect [block_size + further_horizon] length sequence) yields competitive performance to running without KV-cache. Balances speed and performance.
-    output_unmasking_history: True
+    output_unmasking_history: False   # 不输出step map，只输出最终结果
     use_cache: False
     latent_recursive_steps: 1
     
@@ -36,9 +36,11 @@ rollout:
     # Core logic: Each cycle executes [R latent thinking steps + N normal forward steps]
     # Each normal forward step unmasks unmask_token_number_per_step tokens
     
-    R: 2                              # Number of latent thinking steps per cycle
-    unmask_token_number_per_step: 1  # Number of tokens to unmask per forward step
-    block_size: 8                    # Total tokens processed per block
+    H_cycles: 2 # latent recursive steps (before every unmask steps)
+    L_cycles: 4
+    halt_max_steps: 1                         # Number of latent thinking steps per cycle
+    unmask_token_number_per_step: 4  # Number of tokens to unmask per forward step
+    block_size: 8                   # Total tokens processed per block
                                       # Constraint: block_size must be divisible by (N * unmask_token_number_per_step)
     
     # ========== Calculation Example ==========

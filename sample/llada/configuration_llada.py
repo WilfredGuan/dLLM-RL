@@ -367,7 +367,11 @@ class ModelConfig():
     Whether to use latent recursive forward passes.
     """
 
-    max_latent_recursive_steps: int = 32
+    H_cycles: int = 2
+
+    L_cycles: int = 4
+
+    halt_max_steps: int = 4
     """
     Maximum number of latent recursive steps supported.
     """

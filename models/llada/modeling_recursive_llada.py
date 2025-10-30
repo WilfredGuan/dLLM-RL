@@ -1200,7 +1200,6 @@ class LLaDAModel(nn.Module):
 
         return x
 
-
     def forward(
         self,
         input_ids: torch.LongTensor,
@@ -1375,7 +1374,7 @@ class LLaDAModel(nn.Module):
 
                 layers_past = (
                     None
-                    if past_key_values is Nonefz
+                    if past_key_values is None
                     else past_key_values[
                         group_idx * self.config.block_group_size : (group_idx + 1) * self.config.block_group_size
                     ]
@@ -1534,7 +1533,17 @@ class LLaDAModelLM(PreTrainedModel):
             self.model = model
 
         # Store freeze configuration for latent recursive
-        self.low_level_end_idx = 6
+        self.low_level_end_idx = 16
+
+    def init_carry(self, tensor: torch.Tensor) -> InnerCarry:
+
+        carry = InnerCarry(
+            z_H= trunc_normal_init_(torch.empty_like(tensor), std=1),
+            z_L = trunc_normal_init_(torch.empty_like(tensor), std=1)
+        )
+
+        return carry
+
 
     def forward(
         self,
@@ -1589,8 +1598,8 @@ class LLaDAModelLM(PreTrainedModel):
 
     def forward_recursive_reasoning(
         self,
-        input_ids: torch.LongTensor = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
+        carry: InnerCarry = None,
+        hidden_states: Optional[torch.FloatTensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
         attention_bias: Optional[torch.Tensor] = None,
         past_key_values: Optional[List[torch.FloatTensor]] = None,
@@ -1610,20 +1619,6 @@ class LLaDAModelLM(PreTrainedModel):
             raise ValueError("output_attentions is not yet supported in LLaDA")
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-        
-        # NaN check for embeddings
-        if torch.isnan(input_ids).any():
-            print(f"NaN detected in input_ids")
-            raise ValueError("NaN in embeddings")
-
-        # 1. Get initial hidden states
-        hidden_states = self.model._input_embedding(input_ids)
-
-        # NaN check for embeddings
-        if torch.isnan(hidden_states).any():
-            print(f"NaN detected in initial embeddings!")
-            print(input_ids)
-            raise ValueError("NaN in embeddings")
 
         # 2. Get attention bias
         attention_bias = None
@@ -1631,10 +1626,10 @@ class LLaDAModelLM(PreTrainedModel):
         # 3. Latent recursive phase: R steps of latent thinking
         # Only keep gradient for the last step since loss is computed on final hidden_states
         device = hidden_states.device  # 拿到当前 hidden_states 的设备
-        carry = InnerCarry(
-            z_H= nn.Buffer(trunc_normal_init_(torch.empty_like(hidden_states), std=1), persistent=True),
-            z_L = nn.Buffer(trunc_normal_init_(torch.empty_like(hidden_states), std=1), persistent=True)
-        )
+        # carry = InnerCarry(
+        #     z_H= nn.Buffer(trunc_normal_init_(torch.empty_like(hidden_states), std=1), persistent=True),
+        #     z_L = nn.Buffer(trunc_normal_init_(torch.empty_like(hidden_states), std=1), persistent=True)
+        # )
         if hasattr(self.model.transformer, 'blocks'):
             length_of_blocks = len(self.model.transformer.blocks)
         elif hasattr(self.model.transformer, 'block_groups'):
@@ -1698,7 +1693,7 @@ class LLaDAModelLM(PreTrainedModel):
             print(f"NaN detected in logits!")
             raise ValueError("NaN in logits")
 
-        new_carry = InnerCarry(z_H=hidden_states.detach(), z_L=z_L.detach())
+        new_carry = InnerCarry(z_H=z_H.detach(), z_L=z_L.detach())
 
         return new_carry, logits
 

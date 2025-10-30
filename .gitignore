@@ -1,9 +1,11 @@
 */__pycache__/
 /__pycache__/
 /sft_llada_recursive3/
+/llada_eval_recursive
 *.json
 output.txt
 output2.txt
 eval.txt
+eval2.txt
 rjob.sh
 /wandb/

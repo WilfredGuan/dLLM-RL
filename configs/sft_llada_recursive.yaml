@@ -1,5 +1,6 @@
 experiment:
     project: "sft_llada_recursive3"
+    suffix: "2025-10-26-20:00"
     num_node: 1
 
 debug: False
@@ -32,7 +33,9 @@ training:
     
     # Latent Recursive parameters
     use_latent_recursive: True
-    R: 2 # latent recursive steps (before every unmask steps)
+    H_cycles: 2 # latent recursive steps (before every unmask steps)
+    L_cycles: 4
+    halt_max_steps: 1
     recursive_in_training: True
     low_level_end_idx: 16
 

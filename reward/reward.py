@@ -31,7 +31,6 @@ if __name__ == "__main__":
     with open(file_name, 'r') as f:
         data = json.load(f)
 
-
     index_list = []
     extracted_output_list = []
     ground_truth_list = []
@@ -86,7 +85,22 @@ if __name__ == "__main__":
 
 
     if config.dataset.data_type == "math":
-        acc = sum(correctness_list)/len(correctness_list)
+        # acc = sum(correctness_list)/len(correctness_list)
+        num_k = len(data[0]["extracted_output"])
+        best_of_k_acc = []
+
+        for k in range(1, num_k + 1):
+            hits = []
+            for sample in data:
+                if len(sample["correctness"]) == 0:
+                    continue
+                # 只看前 k 个回答
+                topk_correct = sample["correctness"][:k]
+                # 有一个正确就算命中
+                hits.append(any(topk_correct))
+            acc_k = sum(hits) / len(hits)
+            best_of_k_acc.append(acc_k)
+
     else:
         num_task   = 0
         num_correct_task = 0
@@ -117,5 +131,7 @@ if __name__ == "__main__":
         
         
         avg_len = sum(response_length_list)/len(response_length_list)
-
-        save_and_print(f"acc: {acc}\navg length: {avg_len}")
+        print("================ Evaluation Results ==================")
+        save_and_print(f"avg length: {avg_len}")
+        for k, acc_k in enumerate(best_of_k_acc, start=1):
+            save_and_print(f"Best-of-{k}: {acc_k:.4f}")
