@@ -145,7 +145,7 @@ def generate_with_prefix_cache1(
 def generate_with_prefix_cache2(
         model, prompt,
         gen_length, block_length, H_cycles, L_cycles, halt_max_steps, unmask_token_number_per_step, temperature, 
-        target, mask_id, further_horizon, use_cache, unmask_threshold, rank
+        target, mask_id, end_id, further_horizon, use_cache, unmask_threshold, stop_at_first_complete=False
     ) -> DiffusionOutput:
 
 
@@ -157,6 +157,7 @@ def generate_with_prefix_cache2(
 
     cgws = further_horizon
     B, L0 = prompt.shape
+
     x = torch.full((B, L0 + gen_length), mask_id, dtype=torch.long, device=prompt.device)
     max_length = L0 + gen_length
     x[:, :L0] = prompt
@@ -251,6 +252,14 @@ def generate_with_prefix_cache2(
             if (x[:, s:e] == mask_id).sum() == 0:
                 break
             i += 1
+        
+        if stop_at_first_complete:
+            # Check if <|endoftext|> is generated in this block
+            completed = (x[:, s:e] == end_id).any(dim=1)
+            if completed.all():
+                x = x[:, :e]  # truncate to current length
+                break
+            
 
     return DiffusionOutput(sequences=x, history=hist, nfe=nfe)
 
@@ -421,6 +430,7 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
         input_ids = enc["input_ids"].to(device)
 
         mask_id = tokenizer_gpu.encode('<|mdm_mask|>')[0]
+        end_id = tokenizer_gpu.encode('<|endoftext|>')[0]
 
         if config.rollout.use_cache == False:
             config.rollout.further_horizon = None
@@ -440,9 +450,9 @@ def worker(pretrained_model, rank, prompts, orig_idx, seq_dict, step_dict, batch
                 block_length=config.rollout.block_size, H_cycles=H_cycles, L_cycles=L_cycles, halt_max_steps=halt_max_steps,
                 unmask_token_number_per_step=unmask_token_number_per_step,
                 temperature=config.rollout.temperature,
-                target=config.rollout.target, mask_id=mask_id, further_horizon=config.rollout.further_horizon,
+                target=config.rollout.target, mask_id=mask_id, end_id=end_id, further_horizon=config.rollout.further_horizon,
                 use_cache=config.rollout.use_cache, unmask_threshold=unmask_threshold,
-                rank=rank
+                stop_at_first_complete=True if batch_size==1 else False
             )
         else:
             out = generate_with_prefix_cache1(
@@ -541,7 +551,7 @@ if __name__ == "__main__":
     generation_prompts = []
     prefix_list = []
     index_list = []
-    for i in range(num):
+    for i in tqdm(range(num)):
         # preprocess
         if code_eval:
             if data[i]["test_method"] == "stdio":

@@ -12,7 +12,7 @@ accelerate launch \
 ```
 ## Evaluation
 ```bash
-python eval.py config=configs/llada_eval_recursive.yaml > eval.txt 2>&1    
+python eval.py config=configs/llada_eval_recursive.yaml rollout.unmask_token_number_per_step=1
 ```
 
 # Experiment Log
@@ -74,16 +74,15 @@ for batch in train_loader:
 
 #umask/step: unmask_token_number_per_step
 
-| Model      | #Unmask/step | pass@1 | pass@5 | pass@10 |
-|-------------|--------------|--------|--------|---------|
-| Version 1   | 1            |        |        |         |
-| Version 1   | 2            |        |        |         |
-| Version 1   | 4            |        |        |         |
-| Version 1   | 8            |        |        |         |
+| Model      | #Unmask/step | pass@1 | pass@2  |pass@5 | pass@10 |
+|-------------|--------------|--------|--------|---------|--------|
+| Version 1   | 1         |  52.77    |   65.96   |   79.98   | 86.81     | 
+| Version 1   | 2         |  53.68    |  66.57    |  79.23    |  86.58    |  
+| Version 1   | 4         |  36.85  |   50.27 |  67.48  |  78.32  |
 
 ### 
 Todo list:
-- [ ] version 1 的一些其他设置variants
+- [ ] version 1 的一些其他设置variants，希望有更好的performance
 - [ ] version 1 RL
 - [ ] version 试一个更难的数据集，ARC? not sure，但这才应该是终极目标
 - [ ] inference 确实得加速，不然测试和 RL 都会好慢
